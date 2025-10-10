@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/AllocationGrid.tsx","./src/components/EditModal.tsx","./src/components/PlayerInput.tsx","./src/components/PlayerSummary.tsx","./src/config/constants.ts","./src/lib/allocator.ts","./src/lib/types.ts"],"version":"5.9.3"}
