@@ -1,4 +1,5 @@
 import type { Allocation } from '../lib/types';
+import { CONFIG } from '../config/constants';
 import { calculateVariance, getPlayerQuarterBreakdown } from '../lib/allocator';
 
 interface PlayerSummaryProps {
@@ -113,11 +114,12 @@ export function PlayerSummary({ allocation, allPlayers }: PlayerSummaryProps) {
         </table>
       </div>
 
-      {stats.variance > 10 && (
+      {stats.variance > CONFIG.RULES.MAX_MINUTE_VARIANCE && (
         <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md">
           <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            Note: Variance is higher than ideal. This is expected with uneven
-            player counts.
+            Note: Fairness difference is above the target of{' '}
+            {CONFIG.RULES.MAX_MINUTE_VARIANCE} minutes. This can happen with
+            uneven player counts or strict constraints.
           </p>
         </div>
       )}

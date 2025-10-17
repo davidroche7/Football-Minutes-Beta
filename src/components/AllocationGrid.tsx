@@ -76,8 +76,10 @@ export function AllocationGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {allocation.quarters.map((quarter) => {
           const quarterNumber = quarter.quarter;
-          let slotIndex = 0;
           const subs = getSubsForQuarter(allocation, quarterNumber, allPlayers);
+
+          const getSlotIndex = (slot: PlayerSlot) =>
+            quarter.slots.findIndex((candidate) => candidate === slot);
 
           return (
             <div
@@ -93,10 +95,11 @@ export function AllocationGrid({
                 {quarter.slots
                   .filter((s) => s.position === 'GK')
                   .map((slot) => {
-                    const currentIndex = slotIndex++;
+                    const currentIndex = getSlotIndex(slot);
+                    if (currentIndex < 0) return null;
                     return (
                       <div
-                        key={currentIndex}
+                        key={`${quarterNumber}-slot-${currentIndex}`}
                         onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
                         className={getSlotClasses(slot, 'bg-yellow-100 dark:bg-yellow-900 px-3 py-2 rounded-md')}
                       >
@@ -115,18 +118,19 @@ export function AllocationGrid({
                     );
                   })}
 
-                {/* First Wave - 10 minutes */}
+                {/* First Wave - 0-5 minutes */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    First 10 minutes
+                    0-5 minutes
                   </p>
                   {quarter.slots
                     .filter((s) => s.wave === 'first')
                     .map((slot) => {
-                      const currentIndex = slotIndex++;
+                      const currentIndex = getSlotIndex(slot);
+                      if (currentIndex < 0) return null;
                       return (
                         <div
-                          key={currentIndex}
+                          key={`${quarterNumber}-slot-${currentIndex}`}
                           draggable={onDragStart && slot.position !== 'GK'}
                           onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
                           onDragOver={handleDragOver}
@@ -158,18 +162,19 @@ export function AllocationGrid({
                     })}
                 </div>
 
-                {/* Second Wave - 5 minutes */}
+                {/* Second Wave - 5-10 minutes */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    Last 5 minutes
+                    5-10 minutes
                   </p>
                   {quarter.slots
                     .filter((s) => s.wave === 'second')
                     .map((slot) => {
-                      const currentIndex = slotIndex++;
+                      const currentIndex = getSlotIndex(slot);
+                      if (currentIndex < 0) return null;
                       return (
                         <div
-                          key={currentIndex}
+                          key={`${quarterNumber}-slot-${currentIndex}`}
                           draggable={onDragStart && slot.position !== 'GK'}
                           onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
                           onDragOver={handleDragOver}

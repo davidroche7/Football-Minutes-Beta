@@ -6,7 +6,7 @@
 export type Position = 'GK' | 'DEF' | 'ATT';
 
 /** Time block a player can be assigned (in minutes) */
-export type TimeBlock = 0 | 5 | 10 | 15;
+export type TimeBlock = number;
 
 /** Quarter number (1-4) */
 export type Quarter = 1 | 2 | 3 | 4;
@@ -46,6 +46,8 @@ export interface Allocation {
   quarters: QuarterAllocation[];
   /** Summary: player name -> total minutes */
   summary: Record<string, number>;
+  /** Optional warnings generated during allocation */
+  warnings?: string[];
 }
 
 /**

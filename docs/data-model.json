@@ -1,0 +1,91 @@
+{
+  "ArchitectureDomain": "Data",
+  "Purpose": "Persistent structure for Fair Football Minutes application, aligned with TOGAF data architecture guidance.",
+  "Entities": [
+    {
+      "Name": "Match",
+      "Description": "Single fixture captured after confirming team selection.",
+      "Attributes": [
+        { "Name": "id", "Type": "UUID", "Notes": "Primary identifier." },
+        { "Name": "date", "Type": "Date", "Notes": "Fixture date." },
+        { "Name": "opponent", "Type": "String", "Notes": "Opponent club name." },
+        { "Name": "createdAt", "Type": "DateTime", "Notes": "Record creation timestamp." },
+        { "Name": "warnings", "Type": "String[]", "Notes": "Allocation fairness warnings active at confirmation." }
+      ],
+      "Relationships": [
+        { "Target": "MatchPlayer", "Cardinality": "1..*", "Notes": "Per-player participation details." },
+        { "Target": "MatchQuarter", "Cardinality": "1..*", "Notes": "Quarter-by-quarter assignments." }
+      ]
+    },
+    {
+      "Name": "Player",
+      "Description": "Registered athlete within a season.",
+      "Attributes": [
+        { "Name": "id", "Type": "UUID" },
+        { "Name": "displayName", "Type": "String" },
+        { "Name": "preferredPositions", "Type": "String[]" },
+        { "Name": "isActive", "Type": "Boolean" }
+      ],
+      "Relationships": [
+        { "Target": "MatchPlayer", "Cardinality": "0..*" }
+      ]
+    },
+    {
+      "Name": "MatchPlayer",
+      "Description": "Aggregated metrics for a player in a match.",
+      "Attributes": [
+        { "Name": "id", "Type": "UUID" },
+        { "Name": "matchId", "Type": "UUID" },
+        { "Name": "playerId", "Type": "UUID" },
+        { "Name": "totalMinutes", "Type": "Integer" },
+        { "Name": "quartersInGoal", "Type": "Integer" },
+        { "Name": "goals", "Type": "Integer" },
+        { "Name": "playerOfMatch", "Type": "Boolean" },
+        { "Name": "honorableMentions", "Type": "String[]" }
+      ],
+      "Relationships": [
+        { "Target": "MatchQuarter", "Cardinality": "1..*", "Notes": "Detailed timeline entries." }
+      ]
+    },
+    {
+      "Name": "MatchQuarter",
+      "Description": "Roster for a specific quarter including waves and minutes.",
+      "Attributes": [
+        { "Name": "id", "Type": "UUID" },
+        { "Name": "matchId", "Type": "UUID" },
+        { "Name": "quarterNumber", "Type": "Integer" },
+        { "Name": "wave", "Type": "Enum[first,second]" },
+        { "Name": "position", "Type": "Enum[GK,DEF,ATT]" },
+        { "Name": "playerId", "Type": "UUID" },
+        { "Name": "minutes", "Type": "Integer" }
+      ]
+    },
+    {
+      "Name": "Season",
+      "Description": "Grouping for planned Season Stats tab.",
+      "Attributes": [
+        { "Name": "id", "Type": "UUID" },
+        { "Name": "name", "Type": "String" },
+        { "Name": "year", "Type": "Integer" }
+      ],
+      "Relationships": [
+        { "Target": "Match", "Cardinality": "1..*" }
+      ]
+    }
+  ],
+  "FutureExtensions": [
+    {
+      "Name": "TacticsLibrary",
+      "Description": "Placeholder domain for future Tactics/Drills feature.",
+      "Structure": {
+        "Entity": "Tactic",
+        "Attributes": [
+          { "Name": "id", "Type": "UUID" },
+          { "Name": "title", "Type": "String" },
+          { "Name": "category", "Type": "Enum" },
+          { "Name": "content", "Type": "RichText" }
+        ]
+      }
+    }
+  ]
+}

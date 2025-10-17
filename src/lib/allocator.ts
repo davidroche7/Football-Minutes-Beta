@@ -10,22 +10,17 @@ import type {
   QuarterAllocation,
 } from './types';
 
+const MAX_ALLOCATION_ATTEMPTS = 200;
+
 /**
- * Allocate players fairly across 4 quarters
+ * Allocate players fairly across 4 quarters.
  *
- * Algorithm approach:
- * 1. Calculate target minutes per player (total slots * 15min / num players)
- * 2. For each quarter, assign GK first (full 15min)
- * 3. Assign outfield positions (2 DEF + 2 ATT per wave)
- * 4. Track player minutes and balance allocations
- * 5. Ensure GK players get at least one 10-min outfield block
- *
- * @param players - Array of player names
- * @param manualGKs - Optional array of 4 GK assignments (one per quarter)
- * @param retryCount - Internal retry counter to prevent infinite loops
- * @returns Complete allocation for all quarters
+ * 1. Calculate target minutes per player based on 4×10 minute quarters.
+ * 2. Assign GK (full 10 minutes), then 0-5 and 5-10 minute outfield waves.
+ * 3. Track player minutes to minimise variance.
+ * 4. Enforce fairness rules (GK outfield requirement, no consecutive subs).
  */
-export function allocate(players: string[], manualGKs?: [string, string, string, string], retryCount: number = 0): Allocation {
+export function allocate(players: string[], manualGKs?: [string, string, string, string]): Allocation {
   if (players.length < 5) {
     throw new Error('Need at least 5 players for a 5-a-side match');
   }
@@ -34,7 +29,6 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
     throw new Error('Maximum 15 players supported');
   }
 
-  // Validate manual GKs if provided
   if (manualGKs) {
     manualGKs.forEach((gk, index) => {
       if (!players.includes(gk)) {
@@ -43,58 +37,113 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
     });
   }
 
-  // Initialize tracking
+  let bestAllocation: Allocation | null = null;
+  let bestVariance = Infinity;
+  let lastSuccessiveSubError: string | null = null;
+  let bestAllocationWarnings: string[] = [];
+
+  for (let attempt = 0; attempt < MAX_ALLOCATION_ATTEMPTS; attempt++) {
+    const attemptResult = performAllocationAttempt(players, manualGKs);
+    const { allocation, variance, successiveSubError } = attemptResult;
+
+    if (successiveSubError) {
+      lastSuccessiveSubError = successiveSubError;
+      continue;
+    }
+
+    if (variance < bestVariance) {
+      bestAllocation = allocation;
+      bestVariance = variance;
+      bestAllocationWarnings = [];
+    }
+
+    if (variance <= CONFIG.RULES.MAX_MINUTE_VARIANCE) {
+      return { ...allocation, warnings: [] };
+    }
+  }
+
+  if (!bestAllocation) {
+    throw new Error(
+      lastSuccessiveSubError ??
+        'Unable to generate a valid allocation. Try adjusting the player list or rules.'
+    );
+  }
+
+  if (bestVariance <= CONFIG.RULES.MAX_MINUTE_VARIANCE) {
+    return { ...bestAllocation, warnings: bestAllocationWarnings };
+  }
+
+  const warning =
+    `Fairness difference is ${bestVariance} minutes, above the configured limit ` +
+    `of ${CONFIG.RULES.MAX_MINUTE_VARIANCE}. Consider adjusting rules for larger rosters.`;
+  return {
+    ...bestAllocation,
+    warnings: [warning],
+  };
+}
+
+interface AllocationAttemptResult {
+  allocation: Allocation;
+  variance: number;
+  successiveSubError: string | null;
+}
+
+function performAllocationAttempt(
+  players: string[],
+  manualGKs?: [string, string, string, string]
+): AllocationAttemptResult {
   const playerMinutes = new Map<string, number>();
   const playerGKCount = new Map<string, number>();
-  const playerOutfield10MinCount = new Map<string, number>();
+  const playerOutfieldPrimaryWaveCount = new Map<string, number>();
+  const consecutiveSubCounts = new Map<string, number>();
 
   players.forEach((p) => {
     playerMinutes.set(p, 0);
     playerGKCount.set(p, 0);
-    playerOutfield10MinCount.set(p, 0);
+    playerOutfieldPrimaryWaveCount.set(p, 0);
+    consecutiveSubCounts.set(p, 0);
   });
 
   const quarters: QuarterAllocation[] = [];
 
-  // Allocate each quarter
   for (let q = 1; q <= CONFIG.QUARTERS; q++) {
     const manualGK = manualGKs ? manualGKs[q - 1] : undefined;
+    const mustPlayPlayers = new Set(
+      players.filter((p) => (consecutiveSubCounts.get(p) || 0) >= 1)
+    );
+
     const slots = allocateQuarter(
       q as Quarter,
       players,
       playerMinutes,
       playerGKCount,
-      playerOutfield10MinCount,
-      manualGK
+      playerOutfieldPrimaryWaveCount,
+      manualGK,
+      mustPlayPlayers
     );
     quarters.push({ quarter: q as Quarter, slots });
+
+    const playingThisQuarter = new Set(slots.map((slot) => slot.player));
+    players.forEach((p) => {
+      if (playingThisQuarter.has(p)) {
+        consecutiveSubCounts.set(p, 0);
+      } else {
+        consecutiveSubCounts.set(p, (consecutiveSubCounts.get(p) || 0) + 1);
+      }
+    });
   }
 
-  // Build summary
   const summary: Record<string, number> = {};
   players.forEach((p) => {
     summary[p] = playerMinutes.get(p) || 0;
   });
 
   const allocation = { quarters, summary };
-
-  // Validate variance constraint (max ±5 minutes)
   const stats = calculateVariance(allocation);
-  if (stats.variance > 10 && retryCount < 100) {
-    // If variance is too high, try again with different randomization
-    // This is a simple retry mechanism - in rare cases we might need multiple attempts
-    return allocate(players, manualGKs, retryCount + 1);
-  }
-
-  // Validate no successive subs
+  const variance = stats.variance;
   const successiveSubError = validateNoSuccessiveSubs(allocation, players);
-  if (successiveSubError && retryCount < 100) {
-    // If successive subs detected, try again with different randomization
-    return allocate(players, manualGKs, retryCount + 1);
-  }
 
-  // If we hit max retries, return the best attempt we have
-  return allocation;
+  return { allocation, variance, successiveSubError };
 }
 
 /**
@@ -105,20 +154,23 @@ function allocateQuarter(
   players: string[],
   playerMinutes: Map<string, number>,
   playerGKCount: Map<string, number>,
-  playerOutfield10MinCount: Map<string, number>,
-  manualGK?: string
+  playerOutfieldPrimaryWaveCount: Map<string, number>,
+  manualGK?: string,
+  mustPlayPlayers?: Set<string>
 ): PlayerSlot[] {
   const slots: PlayerSlot[] = [];
   const usedThisQuarter = new Set<string>();
 
-  // 1. Assign GK (full 15 minutes)
-  const gk = manualGK || selectGK(players, playerMinutes, playerGKCount, playerOutfield10MinCount);
-  slots.push({ player: gk, position: 'GK', minutes: 15 });
+  // 1. Assign GK (full 10 minutes)
+  const gk =
+    manualGK ||
+    selectGK(players, playerMinutes, playerGKCount, mustPlayPlayers);
+  slots.push({ player: gk, position: 'GK', minutes: CONFIG.TIME_BLOCKS.GK_FULL });
   usedThisQuarter.add(gk);
-  playerMinutes.set(gk, (playerMinutes.get(gk) || 0) + 15);
+  playerMinutes.set(gk, (playerMinutes.get(gk) || 0) + CONFIG.TIME_BLOCKS.GK_FULL);
   playerGKCount.set(gk, (playerGKCount.get(gk) || 0) + 1);
 
-  // 2. Assign first wave (10 minutes): 2 DEF + 2 ATT
+  // 2. Assign first wave (0-5 minutes): 2 DEF + 2 ATT
   const firstWave = selectOutfieldWave(
     players,
     playerMinutes,
@@ -126,42 +178,49 @@ function allocateQuarter(
     4,
     true, // Allow reuse if needed
     playerGKCount,
-    playerOutfield10MinCount,
-    true // This is the first wave (10 min blocks)
+    playerOutfieldPrimaryWaveCount,
+    mustPlayPlayers,
+    true, // This is the first wave (0-5 min block)
+    gk
   );
 
   // Assign 2 DEF, 2 ATT
   firstWave.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: 10, wave: 'first' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + 10);
-    playerOutfield10MinCount.set(p, (playerOutfield10MinCount.get(p) || 0) + 1);
+    slots.push({ player: p, position: 'DEF', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_FIRST, wave: 'first' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_FIRST);
+    playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
     usedThisQuarter.add(p);
   });
 
   firstWave.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: 10, wave: 'first' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + 10);
-    playerOutfield10MinCount.set(p, (playerOutfield10MinCount.get(p) || 0) + 1);
+    slots.push({ player: p, position: 'ATT', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_FIRST, wave: 'first' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_FIRST);
+    playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
     usedThisQuarter.add(p);
   });
 
-  // 3. Assign second wave (5 minutes): 2 DEF + 2 ATT
+  // 3. Assign second wave (5-10 minutes): 2 DEF + 2 ATT
   const secondWave = selectOutfieldWave(
     players,
     playerMinutes,
     usedThisQuarter,
     4,
-    true // Allow reuse if needed
+    true, // Allow reuse if needed
+    undefined,
+    undefined,
+    mustPlayPlayers,
+    false,
+    gk
   );
 
   secondWave.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: 5, wave: 'second' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + 5);
+    slots.push({ player: p, position: 'DEF', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_SECOND, wave: 'second' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_SECOND);
   });
 
   secondWave.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: 5, wave: 'second' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + 5);
+    slots.push({ player: p, position: 'ATT', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_SECOND, wave: 'second' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_SECOND);
   });
 
   return slots;
@@ -176,12 +235,18 @@ function selectGK(
   players: string[],
   playerMinutes: Map<string, number>,
   playerGKCount: Map<string, number>,
-  _playerOutfield10MinCount: Map<string, number>
+  mustPlayPlayers?: Set<string>
 ): string {
   // Sort by: fewest GK quarters, then fewest total minutes
   const sorted = [...players].sort((a, b) => {
     const aGK = playerGKCount.get(a) || 0;
     const bGK = playerGKCount.get(b) || 0;
+
+    const aMustPlay = mustPlayPlayers?.has(a) ? 1 : 0;
+    const bMustPlay = mustPlayPlayers?.has(b) ? 1 : 0;
+    if (aMustPlay !== bMustPlay) {
+      return bMustPlay - aMustPlay;
+    }
 
     if (aGK !== bGK) return aGK - bGK;
 
@@ -189,10 +254,6 @@ function selectGK(
     const bMin = playerMinutes.get(b) || 0;
     const diff = aMin - bMin;
 
-    // Add small randomness for variety when minutes are close
-    if (Math.abs(diff) <= 5) {
-      return Math.random() - 0.5;
-    }
     return diff;
   });
 
@@ -202,7 +263,7 @@ function selectGK(
 /**
  * Select players for an outfield wave
  * Priority:
- * 1. Players who played GK but haven't got their 10-min outfield block yet
+ * 1. Players who played GK but haven't got their primary outfield block yet
  * 2. Players with least total minutes
  * 3. Add randomization for variety
  */
@@ -213,43 +274,67 @@ function selectOutfieldWave(
   count: number,
   allowReuse: boolean = false,
   playerGKCount?: Map<string, number>,
-  playerOutfield10MinCount?: Map<string, number>,
-  isFirstWave: boolean = false
+  playerOutfieldPrimaryWaveCount?: Map<string, number>,
+  mustPlayPlayers?: Set<string>,
+  isFirstWave: boolean = false,
+  currentQuarterGK?: string
 ): string[] {
-  let available = players.filter((p) => !usedThisQuarter.has(p));
+  const filterCurrentQuarterGK = (player: string) =>
+    currentQuarterGK ? player !== currentQuarterGK : true;
 
-  // If not enough available players and reuse is allowed, use all players
+  let available = players.filter(
+    (p) => !usedThisQuarter.has(p) && filterCurrentQuarterGK(p)
+  );
+
   if (available.length < count && allowReuse) {
-    available = players;
+    const pool = players.filter(filterCurrentQuarterGK);
+    const candidates = pool
+      .filter((p) => !available.includes(p))
+      .sort((a, b) => comparePlayers(a, b, playerMinutes));
+
+    available = [
+      ...available,
+      ...candidates.slice(0, count - available.length),
+    ];
   }
 
-  // Sort by priority
   const sorted = available.sort((a, b) => {
-    // Priority 1: If this is first wave (10 min), prioritize GK players who need outfield time
-    if (isFirstWave && playerGKCount && playerOutfield10MinCount) {
+    if (isFirstWave && playerGKCount && playerOutfieldPrimaryWaveCount) {
       const aIsGK = (playerGKCount.get(a) || 0) > 0;
       const bIsGK = (playerGKCount.get(b) || 0) > 0;
-      const aHasOutfield = (playerOutfield10MinCount.get(a) || 0) > 0;
-      const bHasOutfield = (playerOutfield10MinCount.get(b) || 0) > 0;
+      const aHasOutfield = (playerOutfieldPrimaryWaveCount.get(a) || 0) > 0;
+      const bHasOutfield = (playerOutfieldPrimaryWaveCount.get(b) || 0) > 0;
 
-      // Prioritize GK players who don't have outfield time yet
       if (aIsGK && !aHasOutfield && (!bIsGK || bHasOutfield)) return -1;
       if (bIsGK && !bHasOutfield && (!aIsGK || aHasOutfield)) return 1;
     }
 
-    // Priority 2: Fewest total minutes
-    const aMin = playerMinutes.get(a) || 0;
-    const bMin = playerMinutes.get(b) || 0;
-    const diff = aMin - bMin;
-
-    // If within 5 minutes of each other, add randomness
-    if (Math.abs(diff) <= 5) {
-      return Math.random() - 0.5;
+    if (mustPlayPlayers) {
+      const aMustPlay = mustPlayPlayers.has(a);
+      const bMustPlay = mustPlayPlayers.has(b);
+      if (aMustPlay !== bMustPlay) {
+        return aMustPlay ? -1 : 1;
+      }
     }
-    return diff;
+
+    return comparePlayers(a, b, playerMinutes);
   });
 
   return sorted.slice(0, count);
+}
+
+function comparePlayers(
+  a: string,
+  b: string,
+  playerMinutes: Map<string, number>
+): number {
+  const aMin = playerMinutes.get(a) || 0;
+  const bMin = playerMinutes.get(b) || 0;
+  const diff = aMin - bMin;
+  if (diff !== 0) {
+    return diff;
+  }
+  return a.localeCompare(b);
 }
 
 /**
@@ -259,39 +344,40 @@ function selectOutfieldWave(
  * @returns Array of validation errors (empty if valid)
  */
 export function validateAllocation(allocation: Allocation): string[] {
+  const config = CONFIG;
   const errors: string[] = [];
 
   // Check all quarters are present
-  if (allocation.quarters.length !== CONFIG.QUARTERS) {
-    errors.push(`Expected ${CONFIG.QUARTERS} quarters, got ${allocation.quarters.length}`);
+  if (allocation.quarters.length !== config.QUARTERS) {
+    errors.push(`Expected ${config.QUARTERS} quarters, got ${allocation.quarters.length}`);
   }
 
   // Check each quarter has correct structure
   allocation.quarters.forEach((q) => {
     const gkCount = q.slots.filter((s) => s.position === 'GK').length;
-    if (gkCount !== CONFIG.POSITIONS.GK) {
-      errors.push(`Quarter ${q.quarter}: Expected ${CONFIG.POSITIONS.GK} GK, got ${gkCount}`);
+    if (gkCount !== config.POSITIONS.GK) {
+      errors.push(`Quarter ${q.quarter}: Expected ${config.POSITIONS.GK} GK, got ${gkCount}`);
     }
 
     // Count DEF positions
     const defCount = q.slots.filter((s) => s.position === 'DEF').length;
-    if (defCount !== CONFIG.POSITIONS.DEF * 2) {
+    if (defCount !== config.POSITIONS.DEF * 2) {
       errors.push(
-        `Quarter ${q.quarter}: Expected ${CONFIG.POSITIONS.DEF * 2} DEF slots, got ${defCount}`
+        `Quarter ${q.quarter}: Expected ${config.POSITIONS.DEF * 2} DEF slots, got ${defCount}`
       );
     }
 
     // Count ATT positions
     const attCount = q.slots.filter((s) => s.position === 'ATT').length;
-    if (attCount !== CONFIG.POSITIONS.ATT * 2) {
+    if (attCount !== config.POSITIONS.ATT * 2) {
       errors.push(
-        `Quarter ${q.quarter}: Expected ${CONFIG.POSITIONS.ATT * 2} ATT slots, got ${attCount}`
+        `Quarter ${q.quarter}: Expected ${config.POSITIONS.ATT * 2} ATT slots, got ${attCount}`
       );
     }
   });
 
   // Check GK players have outfield time (if configured)
-  if (CONFIG.RULES.GK_REQUIRES_OUTFIELD) {
+  if (config.RULES.GK_REQUIRES_OUTFIELD) {
     const gkPlayers = new Set<string>();
     allocation.quarters.forEach((q) => {
       q.slots.forEach((s) => {
@@ -300,17 +386,17 @@ export function validateAllocation(allocation: Allocation): string[] {
     });
 
     gkPlayers.forEach((gkPlayer) => {
-      const hasOutfield10Min = allocation.quarters.some((q) =>
+      const hasOutfieldPrimaryWave = allocation.quarters.some((q) =>
         q.slots.some(
           (s) =>
             s.player === gkPlayer &&
             s.position !== 'GK' &&
-            s.minutes === CONFIG.TIME_BLOCKS.OUTFIELD_LONG
+            s.minutes === config.TIME_BLOCKS.OUTFIELD_FIRST
         )
       );
 
-      if (!hasOutfield10Min) {
-        errors.push(`Player ${gkPlayer} played GK but has no 10-min outfield block`);
+      if (!hasOutfieldPrimaryWave) {
+        errors.push(`Player ${gkPlayer} played GK but has no 0-5 minute outfield block`);
       }
     });
   }
@@ -494,9 +580,17 @@ export function swapWithSub(
   const min = Math.min(...minutes);
   const max = Math.max(...minutes);
   const variance = max - min;
+  const currentMinutes = Object.values(allocation.summary);
+  const currentVariance =
+    currentMinutes.length > 0
+      ? Math.max(...currentMinutes) - Math.min(...currentMinutes)
+      : 0;
+  const maxVariance = Math.max(CONFIG.RULES.MAX_MINUTE_VARIANCE, currentVariance);
 
-  if (variance > 10) {
-    throw new Error(`Swap would create too much variance (${variance} minutes). Maximum allowed is 10 minutes difference (±5 from mean).`);
+  if (variance > maxVariance) {
+    throw new Error(
+      `Swap would create too much variance (${variance} minutes). Maximum allowed difference is ${maxVariance} minutes.`
+    );
   }
 
   // Validate no player has two successive quarters as sub
@@ -595,15 +689,21 @@ export function swapPositions(
     });
   }
 
-  // Validate variance constraint (max ±5 minutes)
+  // Validate variance constraint (respect current allocation variance if already higher)
   const minutes = Object.values(summary);
   const min = Math.min(...minutes);
   const max = Math.max(...minutes);
   const variance = max - min;
-
-  if (variance > 10) {
-    // Max difference of 10 means ±5 from mean
-    throw new Error(`Swap would create too much variance (${variance} minutes). Maximum allowed is 10 minutes difference (±5 from mean).`);
+  const currentMinutes = Object.values(allocation.summary);
+  const currentVariance =
+    currentMinutes.length > 0
+      ? Math.max(...currentMinutes) - Math.min(...currentMinutes)
+      : 0;
+  const maxVariance = Math.max(CONFIG.RULES.MAX_MINUTE_VARIANCE, currentVariance);
+  if (variance > maxVariance) {
+    throw new Error(
+      `Swap would create too much variance (${variance} minutes). Maximum allowed difference is ${maxVariance} minutes.`
+    );
   }
 
   // Validate no successive subs (if allPlayers provided)

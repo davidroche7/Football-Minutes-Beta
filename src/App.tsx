@@ -1,13 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PlayerInput } from './components/PlayerInput';
 import { AllocationGrid } from './components/AllocationGrid';
 import { PlayerSummary } from './components/PlayerSummary';
 import { EditModal } from './components/EditModal';
 import { GKSelector } from './components/GKSelector';
+import { ConfirmTeamModal } from './components/ConfirmTeamModal';
+import { Tabs } from './components/Tabs';
+import { SeasonStatsView } from './components/SeasonStatsView';
+import { RulesEngineView } from './components/RulesEngineView';
+import { LoginForm } from './components/LoginForm';
 import { allocate, updateSlot, swapPositions, swapWithSub } from './lib/allocator';
+import { listMatches, saveMatch } from './lib/persistence';
+import { getRules, persistRules, resetRules } from './lib/rules';
+import { clearSession, loadStoredSession, storeSession, type AuthSession } from './lib/auth';
 import type { Allocation, Quarter, PlayerSlot } from './lib/types';
+import type { MatchRecord } from './lib/persistence';
+import type { RuleConfig } from './config/rules';
 
 function App() {
+  const [session, setSession] = useState<AuthSession | null>(() => loadStoredSession());
   const [players, setPlayers] = useState<string[]>([]);
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [error, setError] = useState<string>('');
@@ -22,6 +33,25 @@ function App() {
   // Drag and drop state
   const [draggedSlot, setDraggedSlot] = useState<{ quarter: Quarter; slotIndex: number } | null>(null);
   const [draggedSub, setDraggedSub] = useState<{ quarter: Quarter; playerName: string } | null>(null);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string>('');
+  const [confirmError, setConfirmError] = useState<string>('');
+  const [isSavingMatch, setIsSavingMatch] = useState(false);
+  const [activeTab, setActiveTab] = useState<'match' | 'season' | 'rules'>('match');
+  const [matches, setMatches] = useState<MatchRecord[]>([]);
+  const [rules, setRules] = useState<RuleConfig>(() => getRules());
+
+  useEffect(() => {
+    storeSession(session);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      setMatches([]);
+      return;
+    }
+    listMatches().then(setMatches).catch(() => setMatches([]));
+  }, [session]);
 
   const handlePlayersChange = (newPlayers: string[]) => {
     setPlayers(newPlayers);
@@ -179,81 +209,211 @@ function App() {
     }
   };
 
+  const handleOpenConfirm = () => {
+    setConfirmError('');
+    setConfirmModalOpen(true);
+  };
+
+  const handleConfirmMatch = async ({ date, opponent }: { date: string; opponent: string }) => {
+    if (!allocation || !session) return;
+    setIsSavingMatch(true);
+    setConfirmError('');
+    try {
+      const record = await saveMatch({
+        date,
+        opponent,
+        players,
+        allocation,
+      });
+      setSaveStatus(`Match saved for ${date} vs ${opponent}.`);
+      setConfirmModalOpen(false);
+      setMatches((prev) => [...prev, record]);
+    } catch (err) {
+      setConfirmError(err instanceof Error ? err.message : 'Failed to save match');
+    } finally {
+      setIsSavingMatch(false);
+    }
+  };
+
+  const initialDate = new Date().toISOString().slice(0, 10);
+
+  const handleLogout = () => {
+    setSession(null);
+    clearSession();
+    setPlayers([]);
+    setAllocation(null);
+    setManualGKs(null);
+    setMatches([]);
+    setActiveTab('match');
+    setSaveStatus('');
+    setError('');
+  };
+
+  const handleRulesSave = (updated: RuleConfig) => {
+    persistRules(updated);
+    setRules(updated);
+    window.location.reload();
+  };
+
+  const handleRulesReset = () => {
+    resetRules();
+    setRules(getRules());
+    window.location.reload();
+  };
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-10 px-4 dark:bg-gray-900">
+        <div className="mx-auto flex max-w-4xl flex-col items-center gap-6">
+          <header className="text-center">
+            <h1 className="mb-2 text-4xl font-bold text-gray-900 dark:text-white">
+              Fair Football Minutes
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Sign in to manage match setups, season stats, and rules.
+            </p>
+          </header>
+          <LoginForm
+            onSuccess={(authSession) => {
+              setSession(authSession);
+              setSaveStatus('');
+              setError('');
+            }}
+          />
+          <div className="max-w-sm rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            <p className="mb-2 font-medium">Sample Accounts</p>
+            <ul className="space-y-1">
+              <li>
+                <span className="font-mono">coach / CoachSecure1!</span>
+              </li>
+              <li>
+                <span className="font-mono">manager / ManagerSecure2@</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+        <header className="mb-8 flex flex-col items-center gap-2 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
             Fair Football Minutes
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Calculate fair playing time distribution for 5-a-side football
           </p>
+          <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+            <span>
+              Signed in as <span className="font-semibold">{session.username}</span>
+            </span>
+            <button
+              onClick={handleLogout}
+              className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              Sign out
+            </button>
+          </div>
         </header>
 
-        {/* Player Input */}
-        <div className="mb-8">
-          <PlayerInput onPlayersChange={handlePlayersChange} />
-        </div>
+        <Tabs
+          tabs={[
+            { id: 'match', label: 'Match Setup' },
+            { id: 'season', label: 'Season Stats' },
+            { id: 'rules', label: 'Rules Engine' },
+          ]}
+          activeTab={activeTab}
+          onSelect={(id) => setActiveTab(id as typeof activeTab)}
+        />
 
-        {/* GK Selector */}
-        {players.length >= 5 && (
-          <GKSelector
-            players={players}
-            selectedGKs={manualGKs}
-            onGKsChange={handleGKsChange}
-          />
-        )}
-
-        {/* Error Display */}
+        {/* Status Display */}
         {error && (
           <div className="max-w-2xl mx-auto mb-8 p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-md">
             <p className="text-red-800 dark:text-red-200">{error}</p>
           </div>
         )}
-
-        {/* Generate Button */}
-        {players.length >= 5 && players.length <= 15 && !allocation && (
-          <div className="text-center mb-8">
-            <button
-              onClick={handleGenerateAllocation}
-              className="px-8 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-lg font-semibold"
-            >
-              Generate Allocation
-            </button>
+        {saveStatus && (
+          <div className="max-w-2xl mx-auto mb-8 rounded-md border border-green-200 bg-green-50 p-4 text-green-800 dark:border-green-800 dark:bg-green-900/40 dark:text-green-200">
+            {saveStatus}
           </div>
         )}
 
-        {/* Allocation Display */}
-        {allocation && (
+        {activeTab === 'match' && (
           <>
-            <div className="mb-8 flex justify-center">
-              <button
-                onClick={handleGenerateAllocation}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold"
-              >
-                Re-Generate Allocation
-              </button>
+            <div className="mb-8">
+              <PlayerInput onPlayersChange={handlePlayersChange} />
             </div>
 
-            <div className="mb-8">
-              <AllocationGrid
-                allocation={allocation}
-                allPlayers={players}
-                onSlotClick={handleSlotClick}
-                onDragStart={handleDragStart}
-                onSubDragStart={handleSubDragStart}
-                onDrop={handleDrop}
-                onDragEnd={handleDragEnd}
+            {players.length >= 5 && (
+              <GKSelector
+                players={players}
+                selectedGKs={manualGKs}
+                onGKsChange={handleGKsChange}
               />
-            </div>
+            )}
 
-            <div className="mb-8">
-              <PlayerSummary allocation={allocation} allPlayers={players} />
-            </div>
+            {players.length >= 5 && players.length <= 15 && !allocation && (
+              <div className="text-center mb-8">
+                <button
+                  onClick={handleGenerateAllocation}
+                  className="px-8 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-lg font-semibold"
+                >
+                  Generate Allocation
+                </button>
+              </div>
+            )}
 
-            {/* Edit Modal */}
+            {allocation && (
+              <>
+                <div className="mb-8 flex justify-center gap-4">
+                  <button
+                    onClick={handleGenerateAllocation}
+                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold"
+                  >
+                    Re-Generate Allocation
+                  </button>
+                  <button
+                    onClick={handleOpenConfirm}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold disabled:cursor-not-allowed disabled:bg-blue-400"
+                    disabled={players.length < 5 || isSavingMatch}
+                  >
+                    Confirm Team
+                  </button>
+                </div>
+
+                <div className="mb-8">
+                  <AllocationGrid
+                    allocation={allocation}
+                    allPlayers={players}
+                    onSlotClick={handleSlotClick}
+                    onDragStart={handleDragStart}
+                    onSubDragStart={handleSubDragStart}
+                    onDrop={handleDrop}
+                    onDragEnd={handleDragEnd}
+                  />
+                </div>
+
+                <div className="mb-8">
+                  <PlayerSummary allocation={allocation} allPlayers={players} />
+                </div>
+
+                <ConfirmTeamModal
+                  isOpen={confirmModalOpen}
+                  initialDate={initialDate}
+                  onClose={() => setConfirmModalOpen(false)}
+                  onConfirm={handleConfirmMatch}
+                  allocation={allocation}
+                  players={players}
+                  isSaving={isSavingMatch}
+                  error={confirmError}
+                />
+              </>
+            )}
+
             <EditModal
               isOpen={editModalOpen}
               onClose={handleCloseModal}
@@ -264,21 +424,24 @@ function App() {
               onSave={handleSaveEdit}
             />
 
-            {/* TODO: Add export button */}
-            {/* <div className="text-center">
-              <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                Export to Excel
-              </button>
-            </div> */}
+            {players.length === 0 && (
+              <div className="text-center mt-16 text-gray-500 dark:text-gray-400">
+                <p className="text-lg mb-2">Get started by adding players above</p>
+                <p className="text-sm">Add 5-15 players to generate a fair allocation</p>
+              </div>
+            )}
           </>
         )}
 
-        {/* Empty State */}
-        {players.length === 0 && (
-          <div className="text-center mt-16 text-gray-500 dark:text-gray-400">
-            <p className="text-lg mb-2">Get started by adding players above</p>
-            <p className="text-sm">Add 5-15 players to generate a fair allocation</p>
-          </div>
+        {activeTab === 'season' && (
+          <SeasonStatsView
+            matches={matches}
+            onMatchesChange={setMatches}
+            currentUser={session.username}
+          />
+        )}
+        {activeTab === 'rules' && (
+          <RulesEngineView rules={rules} onSave={handleRulesSave} onReset={handleRulesReset} />
         )}
       </div>
     </div>

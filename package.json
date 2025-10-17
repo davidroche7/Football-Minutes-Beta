@@ -13,7 +13,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "import:legacy": "node scripts/import-legacy.cjs"
   },
   "dependencies": {
     "@eslint/js": "^9.37.0",

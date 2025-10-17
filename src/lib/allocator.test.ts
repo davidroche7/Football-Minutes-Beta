@@ -1,6 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { allocate, validateAllocation, calculateVariance, swapPositions, swapWithSub } from './allocator';
+import {
+  allocate,
+  validateAllocation,
+  calculateVariance,
+  swapPositions,
+  swapWithSub,
+  getSubsForQuarter,
+} from './allocator';
 import { CONFIG } from '../config/constants';
+import type { Allocation, Quarter } from './types';
+
+const expectFairnessRespectingWarnings = (allocation: Allocation) => {
+  const stats = calculateVariance(allocation);
+  if (allocation.warnings?.length) {
+    expect(stats.variance).toBeGreaterThan(CONFIG.RULES.MAX_MINUTE_VARIANCE);
+  } else {
+    expect(stats.variance).toBeLessThanOrEqual(CONFIG.RULES.MAX_MINUTE_VARIANCE);
+  }
+  return stats;
+};
 
 describe('allocator', () => {
   describe('allocate', () => {
@@ -40,15 +58,16 @@ describe('allocator', () => {
       expect(errors).toHaveLength(0);
     });
 
-    it('should allocate 10 players fairly', () => {
+    it('should allocate 10 players and report fairness status', () => {
       const players = Array.from({ length: 10 }, (_, i) => `P${i + 1}`);
       const allocation = allocate(players);
 
       expect(allocation.quarters).toHaveLength(CONFIG.QUARTERS);
 
-      // Check variance - should never exceed 10 (±5)
-      const stats = calculateVariance(allocation);
-      expect(stats.variance).toBeLessThanOrEqual(10);
+      const stats = expectFairnessRespectingWarnings(allocation);
+      if (allocation.warnings?.length) {
+        expect(allocation.warnings[0]).toContain('Fairness difference');
+      }
 
       // Validate structure
       const errors = validateAllocation(allocation);
@@ -70,7 +89,7 @@ describe('allocator', () => {
       });
     });
 
-    it('should give GK players at least one 10-min outfield block', () => {
+    it('should give GK players at least one five-minute outfield block', () => {
       const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
       const allocation = allocate(players);
 
@@ -85,14 +104,17 @@ describe('allocator', () => {
         });
       });
 
-      // Each GK player should have at least one 10-min outfield slot
+      // Each GK player should have at least one primary outfield slot
       gkPlayers.forEach((gkPlayer) => {
-        const hasOutfield10Min = allocation.quarters.some((q) =>
+        const hasPrimaryOutfield = allocation.quarters.some((q) =>
           q.slots.some(
-            (s) => s.player === gkPlayer && s.position !== 'GK' && s.minutes === 10
+            (s) =>
+              s.player === gkPlayer &&
+              s.position !== 'GK' &&
+              s.minutes === CONFIG.TIME_BLOCKS.OUTFIELD_FIRST
           )
         );
-        expect(hasOutfield10Min).toBe(true);
+        expect(hasPrimaryOutfield).toBe(true);
       });
     });
 
@@ -100,11 +122,39 @@ describe('allocator', () => {
       const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
       const allocation = allocate(players);
 
-      const stats = calculateVariance(allocation);
-
-      // With variance constraint, should never exceed 10 (±5)
-      expect(stats.variance).toBeLessThanOrEqual(10);
+      const stats = expectFairnessRespectingWarnings(allocation);
       expect(stats.min).toBeGreaterThan(0); // Everyone plays
+    });
+
+    it('should allocate the expected total player minutes for the match', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const allocation = allocate(players);
+
+      const totalMinutes = Object.values(allocation.summary).reduce(
+        (sum, minutes) => sum + minutes,
+        0
+      );
+
+      const expectedTotalMinutes = CONFIG.QUARTERS * CONFIG.QUARTER_DURATION * 5;
+      expect(totalMinutes).toBe(expectedTotalMinutes);
+    });
+
+    it('should assign only 5-minute outfield blocks and 10-minute GK blocks', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const allocation = allocate(players);
+
+      allocation.quarters.forEach((quarter) => {
+        quarter.slots.forEach((slot) => {
+          if (slot.position === 'GK') {
+            expect(slot.minutes).toBe(CONFIG.TIME_BLOCKS.GK_FULL);
+          } else {
+            expect([
+              CONFIG.TIME_BLOCKS.OUTFIELD_FIRST,
+              CONFIG.TIME_BLOCKS.OUTFIELD_SECOND,
+            ]).toContain(slot.minutes);
+          }
+        });
+      });
     });
   });
 
@@ -123,11 +173,11 @@ describe('allocator', () => {
           {
             quarter: 1 as const,
             slots: [
-              { player: 'P1', position: 'GK' as const, minutes: 15 as const },
+              { player: 'P1', position: 'GK' as const, minutes: 10 as const },
             ],
           },
         ],
-        summary: { P1: 15 },
+        summary: { P1: 10 },
       };
 
       const errors = validateAllocation(allocation);
@@ -237,7 +287,7 @@ describe('allocator', () => {
       }
     });
 
-    it('should swap players with different minute allocations and update summary when variance allows', () => {
+    it('should swap players between waves with matching minutes and keep totals stable', () => {
       const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
       const allocation = allocate(players);
 
@@ -248,34 +298,17 @@ describe('allocator', () => {
         (s) => s.wave === 'second' && s.position === 'DEF'
       );
 
+      expect(firstWaveIndex).toBeGreaterThan(-1);
+      expect(secondWaveIndex).toBeGreaterThan(-1);
+
       const firstWavePlayer = allocation.quarters[0]!.slots[firstWaveIndex]!.player;
       const secondWavePlayer = allocation.quarters[0]!.slots[secondWaveIndex]!.player;
 
-      const originalFirstPlayerMinutes = allocation.summary[firstWavePlayer]!;
-      const originalSecondPlayerMinutes = allocation.summary[secondWavePlayer]!;
+      const updatedAllocation = swapPositions(allocation, 1, firstWaveIndex, secondWaveIndex);
 
-      try {
-        const updatedAllocation = swapPositions(allocation, 1, firstWaveIndex, secondWaveIndex);
-
-        // If swap succeeded, verify the changes
-        expect(updatedAllocation.quarters[0]!.slots[firstWaveIndex]!.player).toBe(secondWavePlayer);
-        expect(updatedAllocation.quarters[0]!.slots[secondWaveIndex]!.player).toBe(firstWavePlayer);
-
-        // Summary should be updated (first wave is 10 min, second wave is 5 min)
-        expect(updatedAllocation.summary[firstWavePlayer]).toBe(originalFirstPlayerMinutes - 5);
-        expect(updatedAllocation.summary[secondWavePlayer]).toBe(originalSecondPlayerMinutes + 5);
-
-        // Variance should still be within bounds
-        const stats = calculateVariance(updatedAllocation);
-        expect(stats.variance).toBeLessThanOrEqual(10);
-      } catch (err) {
-        // If swap failed due to variance, that's also valid
-        if (err instanceof Error && err.message.includes('variance')) {
-          expect(err.message).toContain('variance');
-        } else {
-          throw err;
-        }
-      }
+      expect(updatedAllocation.quarters[0]!.slots[firstWaveIndex]!.player).toBe(secondWavePlayer);
+      expect(updatedAllocation.quarters[0]!.slots[secondWaveIndex]!.player).toBe(firstWavePlayer);
+      expect(updatedAllocation.summary).toEqual(allocation.summary);
     });
 
     it('should throw error when swapping GK position', () => {
@@ -292,13 +325,10 @@ describe('allocator', () => {
       );
     });
 
-    it('should throw error when variance exceeds 10 minutes', () => {
-      // Create a scenario where swapping would create too much variance
+    it('should keep variance within limits across repeated swaps', () => {
       const players = ['P1', 'P2', 'P3', 'P4', 'P5'];
       const allocation = allocate(players);
 
-      // Try to create an extreme imbalance by repeatedly swapping
-      // This test may need adjustment based on actual allocation patterns
       const firstWaveIndex = allocation.quarters[0]!.slots.findIndex(
         (s) => s.wave === 'first' && s.position === 'DEF'
       );
@@ -306,27 +336,19 @@ describe('allocator', () => {
         (s) => s.wave === 'second' && s.position === 'DEF'
       );
 
-      // Multiple swaps to try to create variance
-      let tempAllocation = allocation;
-      let swapCount = 0;
-      let errorThrown = false;
+      expect(firstWaveIndex).toBeGreaterThan(-1);
+    expect(secondWaveIndex).toBeGreaterThan(-1);
 
-      // Try up to 10 swaps
+      const baseStats = calculateVariance(allocation);
+      const allowedVariance = Math.max(CONFIG.RULES.MAX_MINUTE_VARIANCE, baseStats.variance);
+
+      let tempAllocation = allocation;
       for (let i = 0; i < 10; i++) {
-        try {
-          tempAllocation = swapPositions(tempAllocation, 1, firstWaveIndex, secondWaveIndex);
-          swapCount++;
-        } catch (err) {
-          if (err instanceof Error && err.message.includes('variance')) {
-            errorThrown = true;
-            break;
-          }
-        }
+        tempAllocation = swapPositions(tempAllocation, 1, firstWaveIndex, secondWaveIndex);
       }
 
-      // Either we successfully swapped without exceeding variance, or we got an error
-      // Both are acceptable outcomes
-      expect(swapCount >= 0).toBe(true);
+      const stats = calculateVariance(tempAllocation);
+      expect(stats.variance).toBeLessThanOrEqual(allowedVariance);
     });
 
     it('should enforce variance constraint on allocation', () => {
@@ -337,10 +359,7 @@ describe('allocator', () => {
       testCases.forEach((count) => {
         const players = Array.from({ length: count }, (_, i) => `P${i + 1}`);
         const allocation = allocate(players);
-        const stats = calculateVariance(allocation);
-
-        // Allow slightly higher variance when successive sub constraint applies
-        expect(stats.variance).toBeLessThanOrEqual(15);
+        expectFairnessRespectingWarnings(allocation);
       });
     });
   });
@@ -406,7 +425,9 @@ describe('allocator', () => {
         try {
           const updatedAllocation = swapWithSub(allocation, 1, outfieldSlotIndex, subs[0]!, players);
           const stats = calculateVariance(updatedAllocation);
-          expect(stats.variance).toBeLessThanOrEqual(10);
+          const baseStats = calculateVariance(allocation);
+          const allowedVariance = Math.max(CONFIG.RULES.MAX_MINUTE_VARIANCE, baseStats.variance);
+          expect(stats.variance).toBeLessThanOrEqual(allowedVariance);
         } catch (err) {
           // If it throws variance error, that's also valid
           if (err instanceof Error && err.message.includes('variance')) {
@@ -416,6 +437,33 @@ describe('allocator', () => {
           }
         }
       }
+    });
+
+    it('should update substitutes list when swapping with a sub', () => {
+      const players = Array.from({ length: 10 }, (_, i) => `P${i + 1}`);
+      const allocation = allocate(players);
+
+      const quarterEntry = allocation.quarters.find((qtr) => {
+        const subs = getSubsForQuarter(allocation, qtr.quarter, players);
+        return subs.length > 0;
+      });
+
+      expect(quarterEntry).toBeDefined();
+      if (!quarterEntry) return;
+
+      const quarterNumber: Quarter = quarterEntry.quarter;
+      const subsBefore = getSubsForQuarter(allocation, quarterNumber, players);
+      const quarter = quarterEntry;
+
+      const sub = subsBefore[0]!;
+      const playingIndex = quarter.slots.findIndex((slot) => slot.position !== 'GK');
+      const playingPlayer = quarter.slots[playingIndex]!.player;
+
+      const updatedAllocation = swapWithSub(allocation, quarterNumber, playingIndex, sub, players);
+      const subsAfter = getSubsForQuarter(updatedAllocation, quarterNumber, players);
+
+      expect(subsAfter).toContain(playingPlayer);
+      expect(subsAfter).not.toContain(sub);
     });
   });
 

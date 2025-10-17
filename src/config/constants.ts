@@ -2,55 +2,42 @@
  * Core configuration constants for Fair Football Minutes allocation
  */
 
-export const CONFIG = {
-  /** Number of quarters in a match */
-  QUARTERS: 4,
+import { DEFAULT_RULES, type RuleConfig } from './rules';
 
-  /** Duration of each quarter in minutes */
-  QUARTER_DURATION: 15,
-
-  /** Number of players per position in each quarter */
-  POSITIONS: {
-    GK: 1,
-    DEF: 2,
-    ATT: 2,
-  },
-
-  /** Time block durations for different slots */
+export interface ConfigValues {
+  QUARTERS: number;
+  QUARTER_DURATION: number;
+  POSITIONS: RuleConfig['positions'];
   TIME_BLOCKS: {
-    /** GK plays full quarter */
-    GK_FULL: 15,
-    /** Outfield first wave */
-    OUTFIELD_LONG: 10,
-    /** Outfield second wave */
-    OUTFIELD_SHORT: 5,
-    /** Substitute (not playing) */
+    GK_FULL: number;
+    OUTFIELD_FIRST: number;
+    OUTFIELD_SECOND: number;
+    SUB: number;
+  };
+  RULES: RuleConfig['fairness'];
+}
+
+export const computeConfig = (rulesConfig: RuleConfig = DEFAULT_RULES): ConfigValues => ({
+  QUARTERS: rulesConfig.quarters,
+  QUARTER_DURATION: rulesConfig.quarterDuration,
+  POSITIONS: rulesConfig.positions,
+  TIME_BLOCKS: {
+    GK_FULL: rulesConfig.quarterDuration,
+    OUTFIELD_FIRST: rulesConfig.waves.first,
+    OUTFIELD_SECOND: rulesConfig.waves.second,
     SUB: 0,
   },
+  RULES: rulesConfig.fairness,
+});
 
-  /** Fairness and allocation rules */
-  RULES: {
-    /** Players who play GK must get at least one 10-min outfield block */
-    GK_REQUIRES_OUTFIELD: true,
-    /** Maximum acceptable minute variance between players */
-    MAX_MINUTE_VARIANCE: 5,
-  },
-} as const;
+export const CONFIG = computeConfig();
 
-/**
- * Get total slots per quarter
- */
-export const getSlotsPerQuarter = () => {
-  return (
-    CONFIG.POSITIONS.GK +
-    CONFIG.POSITIONS.DEF * 2 + // 2 waves of DEF
-    CONFIG.POSITIONS.ATT * 2 // 2 waves of ATT
-  );
+export const getSlotsPerQuarter = (rulesConfig: RuleConfig = DEFAULT_RULES) => {
+  const positions = rulesConfig.positions;
+  return positions.GK + positions.DEF * 2 + positions.ATT * 2;
 };
 
-/**
- * Get total unique players needed per quarter (excluding substitutions)
- */
-export const getPlayersPerQuarter = () => {
-  return CONFIG.POSITIONS.GK + CONFIG.POSITIONS.DEF + CONFIG.POSITIONS.ATT;
+export const getPlayersPerQuarter = (rulesConfig: RuleConfig = DEFAULT_RULES) => {
+  const positions = rulesConfig.positions;
+  return positions.GK + positions.DEF + positions.ATT;
 };
