@@ -1,21 +1,93 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlayerInput } from './components/PlayerInput';
 import { AllocationGrid } from './components/AllocationGrid';
 import { PlayerSummary } from './components/PlayerSummary';
 import { EditModal } from './components/EditModal';
 import { GKSelector } from './components/GKSelector';
 import { ConfirmTeamModal } from './components/ConfirmTeamModal';
+import { AllocationSummaryCard } from './components/AllocationSummaryCard';
 import { Tabs } from './components/Tabs';
 import { SeasonStatsView } from './components/SeasonStatsView';
 import { RulesEngineView } from './components/RulesEngineView';
 import { LoginForm } from './components/LoginForm';
 import { allocate, updateSlot, swapPositions, swapWithSub } from './lib/allocator';
-import { listMatches, saveMatch } from './lib/persistence';
+import {
+  listMatches,
+  saveMatch,
+  getMatchPersistenceMode,
+  getMatchPersistenceError,
+} from './lib/persistence';
 import { getRules, persistRules, resetRules } from './lib/rules';
 import { clearSession, loadStoredSession, storeSession, type AuthSession } from './lib/auth';
+import { ensureSeedData } from './lib/bootstrap';
+import { fetchTeamStats, type TeamStats } from './lib/statsClient';
 import type { Allocation, Quarter, PlayerSlot } from './lib/types';
 import type { MatchRecord } from './lib/persistence';
 import type { RuleConfig } from './config/rules';
+import { TEAM_ID, USE_API_PERSISTENCE } from './config/environment';
+
+if (typeof window !== 'undefined') {
+  ensureSeedData();
+}
+
+interface TeamSummarySnapshot {
+  matches: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  wins: number;
+  draws: number;
+  losses: number;
+}
+
+const computeLocalTeamSummary = (records: MatchRecord[]): TeamSummarySnapshot => {
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+
+  records.forEach((match) => {
+    const result = match.result;
+    if (!result) return;
+
+    if (typeof result.goalsFor === 'number') {
+      goalsFor += result.goalsFor;
+    }
+    if (typeof result.goalsAgainst === 'number') {
+      goalsAgainst += result.goalsAgainst;
+    }
+
+    const outcome = result.result ? result.result.toLowerCase() : '';
+    if (outcome === 'win') wins += 1;
+    else if (outcome === 'draw') draws += 1;
+    else if (outcome === 'loss') losses += 1;
+  });
+
+  return {
+    matches: records.length,
+    goalsFor,
+    goalsAgainst,
+    goalDifference: goalsFor - goalsAgainst,
+    wins,
+    draws,
+    losses,
+  };
+};
+
+interface SummaryCardProps {
+  label: string;
+  value: number;
+}
+
+function SummaryCard({ label, value }: SummaryCardProps) {
+  return (
+    <div className="rounded-md bg-gray-50 px-4 py-3 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200">
+      <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
 
 function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadStoredSession());
@@ -23,6 +95,28 @@ function App() {
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [error, setError] = useState<string>('');
   const [manualGKs, setManualGKs] = useState<[string, string, string, string] | null>(null);
+  const [matchPersistenceMode, setMatchPersistenceMode] = useState(() => getMatchPersistenceMode());
+  const [matchPersistenceError, setMatchPersistenceError] = useState(
+    () => getMatchPersistenceError()?.message ?? null
+  );
+  const [teamSummaryApi, setTeamSummaryApi] = useState<TeamStats | null>(null);
+  const [teamStatsError, setTeamStatsError] = useState<string | null>(null);
+  const [isTeamStatsLoading, setIsTeamStatsLoading] = useState(false);
+  const [matches, setMatches] = useState<MatchRecord[]>([]);
+  const localTeamSummary = useMemo(() => computeLocalTeamSummary(matches), [matches]);
+  const teamSummary: TeamSummarySnapshot = teamSummaryApi
+    ? {
+        matches: teamSummaryApi.played,
+        goalsFor: teamSummaryApi.goalsFor,
+        goalsAgainst: teamSummaryApi.goalsAgainst,
+        goalDifference: teamSummaryApi.goalDifference,
+        wins: teamSummaryApi.wins,
+        draws: teamSummaryApi.draws,
+        losses: teamSummaryApi.losses,
+      }
+    : localTeamSummary;
+  const configuredTeamId = TEAM_ID;
+  const showTeamConfigurationWarning = USE_API_PERSISTENCE && !configuredTeamId;
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -38,20 +132,78 @@ function App() {
   const [confirmError, setConfirmError] = useState<string>('');
   const [isSavingMatch, setIsSavingMatch] = useState(false);
   const [activeTab, setActiveTab] = useState<'match' | 'season' | 'rules'>('match');
-  const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [rules, setRules] = useState<RuleConfig>(() => getRules());
+
+  const refreshMatchPersistenceState = useCallback(() => {
+    const mode = getMatchPersistenceMode();
+    setMatchPersistenceMode(mode);
+    setMatchPersistenceError(getMatchPersistenceError()?.message ?? null);
+    return mode;
+  }, []);
+
+  const syncMatchesFromSource = useCallback(async () => {
+    if (!session) {
+      setMatches([]);
+      setTeamSummaryApi(null);
+      setTeamStatsError(null);
+      setIsTeamStatsLoading(false);
+      return;
+    }
+
+    try {
+      const records = await listMatches(
+        configuredTeamId ? { teamId: configuredTeamId } : undefined
+      );
+      setMatches(records);
+      const mode = refreshMatchPersistenceState();
+
+      if (mode === 'api') {
+        setIsTeamStatsLoading(true);
+        try {
+          const summary = await fetchTeamStats({
+            teamId: configuredTeamId ?? undefined,
+          });
+          setTeamSummaryApi(summary ?? null);
+          setTeamStatsError(null);
+        } catch (err) {
+          setTeamSummaryApi(null);
+          setTeamStatsError(err instanceof Error ? err.message : 'Failed to load season summary.');
+        } finally {
+          setIsTeamStatsLoading(false);
+        }
+      } else {
+        setTeamSummaryApi(null);
+        setTeamStatsError(null);
+        setIsTeamStatsLoading(false);
+      }
+    } catch (error) {
+      setMatches([]);
+      const mode = refreshMatchPersistenceState();
+      if (mode === 'api') {
+        setTeamSummaryApi(null);
+        setTeamStatsError(error instanceof Error ? error.message : 'Failed to load matches.');
+      }
+      setIsTeamStatsLoading(false);
+    }
+  }, [configuredTeamId, refreshMatchPersistenceState, session]);
 
   useEffect(() => {
     storeSession(session);
   }, [session]);
 
   useEffect(() => {
-    if (!session) {
-      setMatches([]);
-      return;
-    }
-    listMatches().then(setMatches).catch(() => setMatches([]));
-  }, [session]);
+    syncMatchesFromSource();
+  }, [session, syncMatchesFromSource]);
+
+  const handleMatchesChange = useCallback(
+    (records: MatchRecord[]) => {
+      setMatches(records);
+      if (matchPersistenceMode === 'api') {
+        syncMatchesFromSource();
+      }
+    },
+    [matchPersistenceMode, syncMatchesFromSource]
+  );
 
   const handlePlayersChange = (newPlayers: string[]) => {
     setPlayers(newPlayers);
@@ -71,6 +223,7 @@ function App() {
       setAllocation(null);
     }
   };
+
 
   const handleGenerateAllocation = () => {
     if (players.length < 5) {
@@ -214,22 +367,81 @@ function App() {
     setConfirmModalOpen(true);
   };
 
-  const handleConfirmMatch = async ({ date, opponent }: { date: string; opponent: string }) => {
+  const handleConfirmMatch = async ({
+    date,
+    opponent,
+    venue,
+    goalsFor,
+    goalsAgainst,
+    outcome,
+    playerOfMatch,
+    honorableMentions,
+    scorers,
+  }: {
+    date: string;
+    opponent: string;
+    venue: 'Home' | 'Away' | 'Neutral';
+    goalsFor: number | null;
+    goalsAgainst: number | null;
+    outcome: 'Win' | 'Loss' | 'Draw' | '';
+    playerOfMatch: string;
+    honorableMentions: string;
+    scorers: string;
+  }) => {
     if (!allocation || !session) return;
     setIsSavingMatch(true);
     setConfirmError('');
     try {
-      const record = await saveMatch({
+      const hasResultDetails =
+        venue ||
+        outcome ||
+        goalsFor !== null ||
+        goalsAgainst !== null ||
+        playerOfMatch.trim() ||
+        honorableMentions.trim() ||
+        scorers.trim();
+
+      const toTitleCase = (value: string) =>
+        value
+          .trim()
+          .split(/\s+/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+
+      const parseList = (value: string, dedupe = false) => {
+        const tokens = value
+          .split(/[,;\n]+/)
+          .map((token) => toTitleCase(token))
+          .filter(Boolean);
+        if (!dedupe) return tokens;
+        const set = new Set(tokens);
+        return Array.from(set);
+      };
+
+      await saveMatch({
         date,
         opponent,
         players,
         allocation,
+        result: hasResultDetails
+          ? {
+              venue,
+              result: outcome || undefined,
+              goalsFor,
+              goalsAgainst,
+              playerOfMatch: playerOfMatch.trim() ? toTitleCase(playerOfMatch) : undefined,
+              honorableMentions: parseList(honorableMentions, true),
+              scorers: parseList(scorers, false),
+            }
+          : null,
+        createdBy: session.username,
       });
       setSaveStatus(`Match saved for ${date} vs ${opponent}.`);
       setConfirmModalOpen(false);
-      setMatches((prev) => [...prev, record]);
+      await syncMatchesFromSource();
     } catch (err) {
       setConfirmError(err instanceof Error ? err.message : 'Failed to save match');
+      refreshMatchPersistenceState();
     } finally {
       setIsSavingMatch(false);
     }
@@ -344,8 +556,81 @@ function App() {
 
         {activeTab === 'match' && (
           <>
+            <section className="mx-auto mb-8 w-full max-w-5xl rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <header className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Season Snapshot
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Overview of confirmed fixtures this season.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>Data source:</span>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 font-semibold ${
+                      matchPersistenceMode === 'api'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 border border-green-200 dark:border-green-800/60'
+                        : matchPersistenceMode === 'fallback'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-100 border border-yellow-300 dark:border-yellow-800/60'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 border border-blue-200 dark:border-blue-800/60'
+                    }`}
+                  >
+                    {teamSummaryApi
+                      ? 'API backend'
+                      : matchPersistenceMode === 'fallback'
+                      ? 'Local fallback'
+                      : 'Local storage'}
+                  </span>
+                </div>
+              </header>
+
+              {matchPersistenceMode === 'api' && isTeamStatsLoading && !teamStatsError && (
+                <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                  Loading latest season statistics…
+                </p>
+              )}
+              {matchPersistenceMode === 'api' && teamStatsError && (
+                <div className="mb-3 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-xs text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100">
+                  Unable to retrieve backend stats: {teamStatsError}. Showing local calculations instead.
+                </div>
+              )}
+              {showTeamConfigurationWarning && (
+                <div className="mb-3 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-xs text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100">
+                  API persistence is enabled but no team ID is configured (
+                  <code className="font-mono">VITE_TEAM_ID</code>). Working from local data until a
+                  team is assigned.
+                </div>
+              )}
+              {matchPersistenceMode === 'fallback' && matchPersistenceError && !showTeamConfigurationWarning && (
+                <div className="mb-3 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-xs text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100">
+                  API unavailable: {matchPersistenceError}. Falling back to local data.
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <SummaryCard label="Matches Played" value={teamSummary.matches} />
+                <SummaryCard label="Goals For" value={teamSummary.goalsFor} />
+                <SummaryCard label="Goals Against" value={teamSummary.goalsAgainst} />
+                <div className="rounded-md bg-gray-50 px-4 py-3 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200">
+                  <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Goal Difference
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold">{teamSummary.goalDifference}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Record: {teamSummary.wins}-{teamSummary.draws}-{teamSummary.losses}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <AllocationSummaryCard allocation={allocation} selectedPlayers={players} />
             <div className="mb-8">
-              <PlayerInput onPlayersChange={handlePlayersChange} />
+              <PlayerInput
+                onPlayersChange={handlePlayersChange}
+                currentUser={session.username}
+              />
             </div>
 
             {players.length >= 5 && (
@@ -436,7 +721,7 @@ function App() {
         {activeTab === 'season' && (
           <SeasonStatsView
             matches={matches}
-            onMatchesChange={setMatches}
+            onMatchesChange={handleMatchesChange}
             currentUser={session.username}
           />
         )}

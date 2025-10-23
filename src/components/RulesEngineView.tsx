@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RuleConfig } from '../config/rules';
+import { USE_API_PERSISTENCE } from '../config/environment';
+import { fetchActiveRuleset } from '../lib/rulesClient';
+import { getMatchPersistenceMode } from '../lib/persistence';
 
 interface RulesEngineViewProps {
   rules: RuleConfig;
@@ -10,11 +13,53 @@ interface RulesEngineViewProps {
 export function RulesEngineView({ rules, onSave, onReset }: RulesEngineViewProps) {
   const [localRules, setLocalRules] = useState<RuleConfig>(rules);
   const [status, setStatus] = useState<'idle' | 'dirty' | 'saved'>('idle');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<'api' | 'local'>('local');
 
   useEffect(() => {
     setLocalRules(rules);
     setStatus('idle');
   }, [rules]);
+
+  useEffect(() => {
+    if (!USE_API_PERSISTENCE || getMatchPersistenceMode() !== 'api') {
+      setDataSource('local');
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoading(true);
+    setError(null);
+
+    fetchActiveRuleset()
+      .then((response) => {
+        if (!active) return;
+        if (response?.config) {
+          setLocalRules(response.config);
+          setDataSource('api');
+          setStatus('idle');
+        } else {
+          setDataSource('local');
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        setDataSource('local');
+        setError(err instanceof Error ? err.message : 'Failed to load rules from API.');
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleNumberChange = (path: string[], value: number) => {
     setLocalRules((prev) => {
@@ -47,8 +92,33 @@ export function RulesEngineView({ rules, onSave, onReset }: RulesEngineViewProps
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-200">
-        Adjust wave durations or fairness thresholds to test new scheduling rules. Changes are stored locally and require
-        a refresh to apply across the allocator.
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            Adjust wave durations or fairness thresholds to test new scheduling rules.
+          </span>
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+              dataSource === 'api'
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 border border-green-200 dark:border-green-800/60'
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 border border-blue-200 dark:border-blue-800/60'
+            }`}
+          >
+            Source: {dataSource === 'api' ? 'API backend' : 'Local defaults'}
+          </span>
+        </div>
+        <p className="text-xs text-yellow-700 dark:text-yellow-200">
+          Changes are stored locally and require a refresh to apply across the allocator.
+        </p>
+        {isLoading && (
+          <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-200">
+            Loading rules from backend…
+          </p>
+        )}
+        {error && (
+          <p className="mt-2 text-xs text-red-700 dark:text-red-300">
+            {error}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

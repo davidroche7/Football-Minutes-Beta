@@ -14,7 +14,12 @@ export interface ConfigValues {
     OUTFIELD_SECOND: number;
     SUB: number;
   };
-  RULES: RuleConfig['fairness'];
+  RULES: {
+    MAX_MINUTE_VARIANCE: number;
+    GK_REQUIRES_OUTFIELD: boolean;
+    maxVariance: number;
+    gkRequiresOutfield: boolean;
+  };
 }
 
 export const computeConfig = (rulesConfig: RuleConfig = DEFAULT_RULES): ConfigValues => ({
@@ -27,7 +32,12 @@ export const computeConfig = (rulesConfig: RuleConfig = DEFAULT_RULES): ConfigVa
     OUTFIELD_SECOND: rulesConfig.waves.second,
     SUB: 0,
   },
-  RULES: rulesConfig.fairness,
+  RULES: {
+    MAX_MINUTE_VARIANCE: rulesConfig.fairness.maxVariance,
+    GK_REQUIRES_OUTFIELD: rulesConfig.fairness.gkRequiresOutfield,
+    maxVariance: rulesConfig.fairness.maxVariance,
+    gkRequiresOutfield: rulesConfig.fairness.gkRequiresOutfield,
+  },
 });
 
 export const CONFIG = computeConfig();

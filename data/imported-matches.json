@@ -1,0 +1,740 @@
+{
+  "generatedAt": "2025-10-17T22:24:07.628Z",
+  "source": "FOOTBALL LINEUPS.xlsx",
+  "rules": {
+    "quarters": 4,
+    "quarterDuration": 10,
+    "waves": {
+      "first": 5,
+      "second": 5
+    },
+    "positions": {
+      "GK": 1,
+      "DEF": 2,
+      "ATT": 2
+    }
+  },
+  "matchCount": 5,
+  "matches": [
+    {
+      "dateSerial": 45920,
+      "date": "2025-09-19",
+      "opponent": "Melbourne",
+      "venue": "Away",
+      "availablePlayers": [
+        "Charlotte",
+        "Keira",
+        "Lottie W",
+        "Nicole C",
+        "Thea",
+        "Willow"
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "slots": [
+            {
+              "player": "Keira",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie W",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Charlotte",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Thea"
+          ]
+        },
+        {
+          "quarter": 2,
+          "slots": [
+            {
+              "player": "Lottie W",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Charlotte",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Keira",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Willow"
+          ]
+        },
+        {
+          "quarter": 3,
+          "slots": [
+            {
+              "player": "Charlotte",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Keira",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie W",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Nicole C"
+          ]
+        },
+        {
+          "quarter": 4,
+          "slots": [
+            {
+              "player": "Thea",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Charlotte",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie W",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Keira"
+          ]
+        }
+      ],
+      "summary": {
+        "Keira": 30,
+        "Nicole C": 30,
+        "Lottie W": 40,
+        "Willow": 30,
+        "Charlotte": 40,
+        "Thea": 30
+      },
+      "result": {
+        "venue": "Away",
+        "opponent": "Melbourne",
+        "result": "Lost",
+        "goalsFor": 3,
+        "goalsAgainst": 10,
+        "playerOfMatch": "Charlotte",
+        "honorableMentions": [
+          "Nicole C"
+        ],
+        "scorers": [
+          "Nicole C",
+          "Nicole C",
+          "Charlotte"
+        ]
+      }
+    },
+    {
+      "dateSerial": 45927,
+      "date": "2025-09-26",
+      "opponent": "Histon",
+      "venue": "Home",
+      "availablePlayers": [
+        "Charlotte",
+        "Flo",
+        "Isla",
+        "Keira",
+        "Lottie B",
+        "Nicole C",
+        "Nicole H",
+        "Savannah",
+        "Thea",
+        "Willow"
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "slots": [
+            {
+              "player": "Flo",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Charlotte",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie B",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Thea",
+            "Isla",
+            "Nicole H",
+            "Savannah",
+            "Keira"
+          ]
+        },
+        {
+          "quarter": 2,
+          "slots": [
+            {
+              "player": "Keira",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole H",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Savannah",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Isla",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Flo",
+            "Charlotte",
+            "Lottie B",
+            "Willow",
+            "Nicole C"
+          ]
+        },
+        {
+          "quarter": 3,
+          "slots": [
+            {
+              "player": "Charlotte",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie B",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Flo",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Isla",
+            "Nicole H",
+            "Savannah",
+            "Keira",
+            "Thea"
+          ]
+        },
+        {
+          "quarter": 4,
+          "slots": [
+            {
+              "player": "Savannah",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole H",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Keira",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Isla",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Charlotte",
+            "Willow",
+            "Nicole C",
+            "Lottie B",
+            "Flo"
+          ]
+        }
+      ],
+      "summary": {
+        "Flo": 20,
+        "Charlotte": 20,
+        "Lottie B": 20,
+        "Willow": 20,
+        "Nicole C": 20,
+        "Keira": 20,
+        "Nicole H": 20,
+        "Savannah": 20,
+        "Isla": 20,
+        "Thea": 20
+      },
+      "result": {
+        "venue": "Home",
+        "opponent": "Histon",
+        "result": "Lost",
+        "goalsFor": 0,
+        "goalsAgainst": 5,
+        "playerOfMatch": "Nicole H",
+        "honorableMentions": [
+          "Willow",
+          "Lottie B"
+        ],
+        "scorers": []
+      }
+    },
+    {
+      "dateSerial": 45934,
+      "date": "2025-10-03",
+      "opponent": "Sawston Green",
+      "venue": "Away",
+      "availablePlayers": [
+        "Charlotte",
+        "Emily",
+        "Isla",
+        "Keira",
+        "Lottie B",
+        "Lottie W",
+        "Nicole C",
+        "Nicole H",
+        "Renee",
+        "Renne",
+        "Thea",
+        "Willow"
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "slots": [
+            {
+              "player": "Nicole H",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Charlotte",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Isla",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie B",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Emily",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Keira",
+            "Thea"
+          ]
+        },
+        {
+          "quarter": 2,
+          "slots": [
+            {
+              "player": "Nicole C",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Renee",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie W",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": []
+        },
+        {
+          "quarter": 3,
+          "slots": [
+            {
+              "player": "Emily",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole H",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie W",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Keira",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Renne",
+            "Charlotte"
+          ]
+        },
+        {
+          "quarter": 4,
+          "slots": [
+            {
+              "player": "Willow",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie B",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Isla",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": []
+        }
+      ],
+      "summary": {
+        "Nicole H": 20,
+        "Charlotte": 10,
+        "Isla": 20,
+        "Lottie B": 20,
+        "Emily": 20,
+        "Nicole C": 20,
+        "Willow": 20,
+        "Renee": 10,
+        "Lottie W": 20,
+        "Keira": 10,
+        "Thea": 10
+      },
+      "result": {
+        "venue": "Away",
+        "opponent": "Sawston Green",
+        "result": "Lost",
+        "goalsFor": 3,
+        "goalsAgainst": 8,
+        "playerOfMatch": "Lottie W",
+        "honorableMentions": [
+          "Thea"
+        ],
+        "scorers": [
+          "Lottie W",
+          "Lottie W",
+          "Lottie W"
+        ]
+      }
+    },
+    {
+      "dateSerial": 45941,
+      "date": "2025-10-10",
+      "opponent": "Isleham U7",
+      "venue": "Home",
+      "availablePlayers": [
+        "Charlotte",
+        "Emily",
+        "Isla",
+        "Keira",
+        "Lottie B",
+        "Lottie W",
+        "Nicole C",
+        "Renee",
+        "Savannah",
+        "Thea",
+        "Willow"
+      ],
+      "quarters": [
+        {
+          "quarter": 1,
+          "slots": [
+            {
+              "player": "Willow",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Nicole C",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Savannah",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Keira",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Lottie B",
+            "Emily"
+          ]
+        },
+        {
+          "quarter": 2,
+          "slots": [
+            {
+              "player": "Lottie W",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Charlotte",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Isla",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Renee",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": []
+        },
+        {
+          "quarter": 3,
+          "slots": [
+            {
+              "player": "Nicole C",
+              "position": "GK",
+              "minutes": 10
+            },
+            {
+              "player": "Willow",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie W",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Isla",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Thea",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": [
+            "Savannah",
+            "Keira"
+          ]
+        },
+        {
+          "quarter": 4,
+          "slots": [
+            {
+              "player": "Charlotte",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Lottie B",
+              "position": "DEF",
+              "minutes": 10
+            },
+            {
+              "player": "Emily",
+              "position": "ATT",
+              "minutes": 10
+            },
+            {
+              "player": "Renee",
+              "position": "ATT",
+              "minutes": 10
+            }
+          ],
+          "substitutes": []
+        }
+      ],
+      "summary": {
+        "Willow": 20,
+        "Nicole C": 20,
+        "Savannah": 10,
+        "Thea": 20,
+        "Keira": 10,
+        "Lottie W": 20,
+        "Charlotte": 20,
+        "Isla": 20,
+        "Renee": 20,
+        "Lottie B": 10,
+        "Emily": 10
+      },
+      "result": {
+        "venue": "Home",
+        "opponent": "Isleham",
+        "result": "Win",
+        "goalsFor": 7,
+        "goalsAgainst": 4,
+        "playerOfMatch": "Isla",
+        "honorableMentions": [
+          "Savannah"
+        ],
+        "scorers": [
+          "Isla",
+          "Lottie W",
+          "Charlotte",
+          "Keira",
+          "Lottie W",
+          "Lottie W",
+          "Lottie W"
+        ]
+      }
+    },
+    {
+      "dateSerial": 45948,
+      "date": "2025-10-17",
+      "opponent": "Sawston Red",
+      "venue": "Away",
+      "availablePlayers": [],
+      "quarters": [],
+      "summary": {},
+      "result": null
+    }
+  ]
+}

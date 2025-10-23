@@ -1,4 +1,5 @@
 import { AUTH_USERS, SESSION_STORAGE_KEY, type StoredUser } from '../config/users';
+import { SESSION_SECRET } from '../config/environment';
 
 export interface AuthSession {
   username: string;
@@ -65,14 +66,31 @@ const deriveHash = async (password: string, user: StoredUser) => {
   return deriveHashNode(password, user);
 };
 
-const createSessionToken = async () => {
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    return btoa(String.fromCharCode(...bytes));
-  }
-  const { randomBytes } = await import('node:crypto');
-  return randomBytes(32).toString('base64');
+const signSessionPayloadBrowser = async (payload: string) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(SESSION_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(payload));
+  return bufferToHex(signature);
+};
+
+const signSessionPayloadNode = async (payload: string) => {
+  const { createHmac } = await import('node:crypto');
+  return createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+};
+
+const createSessionToken = async (username: string, issuedAt: string) => {
+  const payload = `${username}|${issuedAt}`;
+  const signature =
+    typeof crypto !== 'undefined' && crypto.subtle
+      ? await signSessionPayloadBrowser(payload)
+      : await signSessionPayloadNode(payload);
+  const token = `${payload}|${signature}`;
+  return btoa(token);
 };
 
 export async function verifyCredentials(
@@ -91,10 +109,12 @@ export async function verifyCredentials(
     return null;
   }
 
+  const issuedAt = new Date().toISOString();
+
   return {
     username: user.username,
-    token: await createSessionToken(),
-    issuedAt: new Date().toISOString(),
+    token: await createSessionToken(user.username, issuedAt),
+    issuedAt,
   };
 }
 

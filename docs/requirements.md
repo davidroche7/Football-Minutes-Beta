@@ -4,16 +4,16 @@
 
 - Authentication gate with PBKDF2 passwords, session storage, and logout controls.
 - Configurable rules engine: defaults in `src/config/rules.ts`, overrides persisted via UI to localStorage.
-- Match confirmation flow capturing opponent/date, fairness warnings, and audit history.
-- Season stats dashboard with per-player rollups, GK tracking, and inline match edits.
-- Legacy Excel importer (`npm run import:legacy`) that converts historic lineups/results into allocator-compatible JSON.
+- Match confirmation flow capturing opponent/date/venue/result details with fairness warnings and audit history.
+- Auto-seeded roster + match history from the legacy Excel (`npm run import:legacy` populates `data/imported-matches.json` and loads on boot).
+- Season stats dashboard with season snapshot, player goals/POTM/honorable mentions, audit feed, and editable quarter-by-quarter allocations.
+- Roster management UI (add/remove/restore) shared between match setup and season stats views.
+- Team-scoped audit API with frontend event normalisation (prevents cross-team leakage and resolves roster log naming).
 
 ### In-Progress / Upcoming
 
-1. Live rule propagation without page reload (allocator + UI contexts reacting to rule changes).
-2. Persist rules and match data to backend API / shared database (replace localStorage stubs).
-3. Wire importer output into the app (auto-populate Confirm Team flow / persistence once backend exists).
-4. Extend season analytics (average minutes vs target, opponent summaries, export tooling).
-5. Job scheduling / alerting for fairness warnings (surface to coaches before match day).
-6. Phase 3: Post-game editing for on-field substitutions & stats (goals, Player-of-Match, honourable mentions).
-7. Phase 4: Editable rules editor with validation + version history; future Tactics/Drills library.
+1. Finish backend wiring for roster/match persistence (ensure all refresh paths respect active `teamId`, add CSRF & auth middleware).
+2. Live rule propagation without page reload (allocator + UI contexts reacting instantly to rule changes).
+3. Expand match analytics (minute deltas to target, opponent summaries, downloadable reports).
+4. Add fairness warnings and variance alerts to the match day dashboard (proactive notifications).
+5. Introduce tactics/drills library & advanced planning (Phase 4) once persistence is live.

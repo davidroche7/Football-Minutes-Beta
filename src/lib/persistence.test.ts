@@ -51,12 +51,78 @@ describe('persistence', () => {
 
     const updated = await updateMatch(saved.id, {
       opponent: 'New Opponent',
+      date: '2024-01-02',
       editor: 'coach',
     });
 
     expect(updated).not.toBeNull();
     expect(updated?.opponent).toBe('New Opponent');
-    expect(updated?.editHistory).toHaveLength(1);
-    expect(updated?.editHistory[0]?.field).toBe('opponent');
+    expect(updated?.date).toBe('2024-01-02');
+    expect(updated?.editHistory).toHaveLength(2);
+    expect(updated?.editHistory.map((e) => e.field)).toEqual(['opponent', 'date']);
+  });
+
+  it('updates match results and allocation with audit entries', async () => {
+    const saved = await saveMatch({
+      date: '2024-01-01',
+      opponent: 'Rivals FC',
+      players: ['P1', 'P2', 'P3'],
+      allocation: {
+        quarters: [
+          {
+            quarter: 1,
+            slots: [
+              { player: 'P1', position: 'GK', minutes: 10 },
+              { player: 'P2', position: 'DEF', minutes: 10 },
+              { player: 'P3', position: 'DEF', minutes: 10 },
+              { player: 'P1', position: 'ATT', minutes: 10 },
+              { player: 'P2', position: 'ATT', minutes: 10 },
+            ],
+          },
+        ],
+        summary: { P1: 20, P2: 20, P3: 10 },
+      },
+      result: null,
+    });
+
+    const newAllocation = {
+      quarters: [
+        {
+          quarter: 1,
+          slots: [
+            { player: 'P2', position: 'GK', minutes: 10 },
+            { player: 'P1', position: 'DEF', minutes: 10 },
+            { player: 'P3', position: 'DEF', minutes: 10 },
+            { player: 'P4', position: 'ATT', minutes: 10 },
+            { player: 'P5', position: 'ATT', minutes: 10 },
+          ],
+        },
+      ],
+      summary: { P1: 10, P2: 10, P3: 10, P4: 10, P5: 10 },
+    } as const;
+
+    const updated = await updateMatch(saved.id, {
+      result: {
+        venue: 'Home',
+        result: 'Win',
+        goalsFor: 4,
+        goalsAgainst: 2,
+        playerOfMatch: 'P1',
+        honorableMentions: ['P2'],
+        scorers: ['P1', 'P4', 'P5', 'P1'],
+      },
+      allocation: newAllocation,
+      editor: 'manager',
+    });
+
+    expect(updated).not.toBeNull();
+    expect(updated?.result?.venue).toBe('Home');
+    expect(updated?.result?.goalsFor).toBe(4);
+    expect(updated?.allocation.summary).toEqual(newAllocation.summary);
+    expect(updated?.players.sort()).toEqual(['P1', 'P2', 'P3', 'P4', 'P5']);
+    const editedFields = updated?.editHistory.map((event) => event.field) ?? [];
+    expect(editedFields).toContain('result.venue');
+    expect(editedFields).toContain('result.scorers');
+    expect(editedFields).toContain('allocation');
   });
 });
