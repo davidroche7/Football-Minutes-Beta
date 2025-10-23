@@ -1,3 +1,4 @@
+import type { DragEvent } from 'react';
 import type { Allocation, Quarter, PlayerSlot } from '../lib/types';
 import { getSubsForQuarter } from '../lib/allocator';
 
@@ -29,7 +30,7 @@ export function AllocationGrid({
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
+  const handleDragStart = (e: DragEvent, quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
     // Only allow dragging outfield positions
     if (slot.position === 'GK') {
       e.preventDefault();
@@ -40,11 +41,11 @@ export function AllocationGrid({
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
+  const handleDrop = (e: DragEvent, quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
     e.preventDefault();
     // Only allow dropping on outfield positions
     if (slot.position === 'GK') {

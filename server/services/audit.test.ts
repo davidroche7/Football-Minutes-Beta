@@ -6,7 +6,6 @@ const dbMocks = vi.hoisted(() => ({
 
 vi.mock('../db/client', () => dbMocks);
 
-// eslint-disable-next-line import/first
 import { listAuditEvents } from './audit';
 
 describe('listAuditEvents', () => {

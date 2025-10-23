@@ -27,7 +27,7 @@ export async function readJsonBody<T = unknown>(req: VercelRequest): Promise<T> 
 
   try {
     return JSON.parse(raw) as T;
-  } catch (error) {
+  } catch {
     throw new Error('INVALID_JSON_BODY');
   }
 }

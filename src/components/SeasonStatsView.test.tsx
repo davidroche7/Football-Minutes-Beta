@@ -48,9 +48,7 @@ vi.mock('../lib/roster', () => ({
   restorePlayer: (...args: unknown[]) => mockRestorePlayer(...args),
 }));
 
-// eslint-disable-next-line import/first
 import { SeasonStatsView } from './SeasonStatsView';
-// eslint-disable-next-line import/first
 import type { MatchRecord } from '../lib/persistence';
 
 const buildMatch = (overrides: Partial<MatchRecord> = {}): MatchRecord => ({

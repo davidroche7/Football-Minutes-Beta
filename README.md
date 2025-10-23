@@ -273,6 +273,29 @@ npm run import:legacy > data/imported-matches.json
 
 The generated data mirrors the allocator model (quarters, player minutes, results) so it can be fed into the web app or used for regression tests.
 
+### Seed the Postgres API from Legacy Data
+
+Once `data/imported-matches.json` exists you can load it into the Postgres backend used by the API:
+
+```bash
+# Ensure DATABASE_URL and VITE_TEAM_ID/SEED_TEAM_ID are set
+DATABASE_URL=postgres://user:pass@localhost:5432/football_minutes \
+VITE_TEAM_ID=00000000-0000-0000-0000-000000000001 \
+node scripts/db/seed-from-json.cjs
+```
+
+Optional overrides:
+
+| Variable              | Purpose                                                  |
+|-----------------------|----------------------------------------------------------|
+| `SEED_TEAM_NAME`      | Override display name (default: Saffron Walden U8s)      |
+| `SEED_TEAM_AGE_GROUP` | Team age group label (default: U8)                       |
+| `SEED_SEASON_NAME`    | Season name (default: `<current year> Season`)           |
+| `SEED_SEASON_YEAR`    | Season year integer (default: current year)              |
+
+The script clears existing fixtures, players, and related stats for the chosen team before inserting roster, lineups, match results, and awards.
+If the importer encounters incomplete data it will list the affected fixtures after the run. Fix the values in `data/FOOTBALL LINEUPS.xlsx` (or extend the `NAME_ALIASES` map in `scripts/db/seed-from-json.cjs` for recurring typos) and rerun `npm run import:legacy` followed by the seeder.
+
 ## License
 
 MIT

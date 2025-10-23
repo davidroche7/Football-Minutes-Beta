@@ -54,6 +54,7 @@ const deriveHashNode = async (
   user: StoredUser
 ) => {
   const { pbkdf2Sync } = await import('node:crypto');
+  const { Buffer } = await import('node:buffer');
   const salt = Buffer.from(user.saltHex, 'hex');
   const hash = pbkdf2Sync(password, salt, user.iterations, 32, 'sha256');
   return hash.toString('hex');

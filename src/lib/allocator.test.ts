@@ -64,7 +64,7 @@ describe('allocator', () => {
 
       expect(allocation.quarters).toHaveLength(CONFIG.QUARTERS);
 
-      const stats = expectFairnessRespectingWarnings(allocation);
+      expectFairnessRespectingWarnings(allocation);
       if (allocation.warnings?.length) {
         expect(allocation.warnings[0]).toContain('Fairness difference');
       }

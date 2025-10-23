@@ -12,6 +12,12 @@ export default [
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+        sourceType: 'module',
+      },
       parser: tsparser,
     },
     plugins: {
@@ -35,6 +41,35 @@ export default [
     languageOptions: {
       ecmaVersion: 2020,
       globals: { ...globals.node },
+      parserOptions: {
+        sourceType: 'module',
+      },
+      parser: tsparser,
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'vitest.setup.ts'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+        sourceType: 'module',
+      },
       parser: tsparser,
     },
     plugins: {

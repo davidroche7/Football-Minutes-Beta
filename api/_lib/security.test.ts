@@ -5,7 +5,6 @@ const SECRET = 'test-session-secret';
 const loadModule = async () => {
   process.env.FFM_SESSION_SECRET = SECRET;
   vi.resetModules();
-  // eslint-disable-next-line import/no-dynamic-require
   return import('./security') as Promise<typeof import('./security')>;
 };
 

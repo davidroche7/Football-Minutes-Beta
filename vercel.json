@@ -2,8 +2,8 @@
   "buildCommand": "npm run build",
   "prebuildCommand": "npm run db:migrate",
   "functions": {
-    "api/**/*": {
-      "runtime": "nodejs20.x"
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3.0.0"
     }
   },
   "env": {

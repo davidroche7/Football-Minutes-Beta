@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Allocation } from '../lib/types';
 
 interface ConfirmTeamModalProps {
@@ -60,7 +60,7 @@ export function ConfirmTeamModal({
     return null;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const parsedGoalsFor = goalsFor.trim() === '' ? null : Number(goalsFor);
     const parsedGoalsAgainst = goalsAgainst.trim() === '' ? null : Number(goalsAgainst);
