@@ -10,11 +10,15 @@ const CSRF_HEADER = 'x-ffm-csrf';
 const CSRF_COOKIE = 'ffm_csrf';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12; // 12 hours
 
-const sessionSecret = process.env.FFM_SESSION_SECRET;
-
-if (!sessionSecret) {
-  throw new Error('FFM_SESSION_SECRET environment variable must be set for API authentication.');
+function getSessionSecret(): string {
+  const sessionSecret = process.env.FFM_SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error('FFM_SESSION_SECRET environment variable must be set for API authentication.');
+  }
+  return sessionSecret;
 }
+
+const sessionSecret = getSessionSecret();
 
 interface ParsedSession {
   actorId: string;

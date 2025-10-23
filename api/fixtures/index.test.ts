@@ -11,24 +11,29 @@ const createSessionToken = (actorId: string, issuedAt: string) => {
   return Buffer.from(`${payload}|${signature}`).toString('base64');
 };
 
-const createResponse = () => {
-  const res: Partial<VercelResponse> & { statusCode: number; body: unknown } = {
+type MockResponse = VercelResponse & { statusCode: number; body: unknown; headers: Record<string, string> };
+
+const createResponse = (): MockResponse => {
+  const res = {
     statusCode: 200,
     body: null,
-    headers: {},
-    setHeader(name: string, value: string) {
-      (this.headers as Record<string, string>)[name] = value;
+    headers: {} as Record<string, string>,
+    setHeader(name: string, value: string | number | readonly string[]) {
+      res.headers[name] = String(value);
+      return res as MockResponse;
     },
     status(code: number) {
-      this.statusCode = code;
-      return this;
+      res.statusCode = code;
+      return res as MockResponse;
     },
     json(payload: unknown) {
-      this.body = payload;
-      return this;
+      res.body = payload;
+      return res as MockResponse;
     },
+    send() { return res as MockResponse; },
+    redirect() { return res as MockResponse; },
   };
-  return res as VercelResponse & { statusCode: number; body: unknown; headers: Record<string, string> };
+  return res as MockResponse;
 };
 
 vi.mock('../../server/services/fixtures', () => ({
