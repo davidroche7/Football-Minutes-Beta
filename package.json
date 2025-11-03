@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Comprehensive team management tool for tracking football season lineups, stats, and fair playing time distribution",
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "concurrently -n \"frontend,backend\" -c \"cyan,magenta\" \"npm:dev:frontend\" \"npm:dev:backend\"",
@@ -13,7 +13,7 @@
     "dev:backend": "tsx watch --env-file=.env server/dev-server.ts",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "tsc -b && vite build",
-    "build:backend": "esbuild server/production-server.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/server.js --external:pg --external:@vercel/postgres --external:express --external:cors --external:dotenv",
+    "build:backend": "esbuild server/production-server.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/server.js --external:pg --external:@vercel/postgres --external:express --external:cors --external:dotenv",
     "start": "NODE_ENV=production node dist/server.js",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
