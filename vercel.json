@@ -1,6 +1,5 @@
 {
   "buildCommand": "npm run build",
-  "prebuildCommand": "npm run db:migrate",
   "functions": {
     "api/**/*.ts": {
       "runtime": "@vercel/node@3.0.0"
