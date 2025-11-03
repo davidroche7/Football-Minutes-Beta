@@ -4,8 +4,5 @@
     "api/**/*.ts": {
       "runtime": "@vercel/node@3.0.0"
     }
-  },
-  "env": {
-    "DATABASE_URL": "@football_minutes_database_url"
   }
 }
