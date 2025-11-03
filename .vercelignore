@@ -1,0 +1,14 @@
+# Exclude individual API handlers - only api/index.ts should be deployed
+api/*
+!api/index.ts
+!api/_lib/
+
+# Exclude tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+
+# Exclude dev files
+.env
+.env.local
+*.log
