@@ -213,6 +213,18 @@ async function updateMatchLocal(
     match.date = updates.date;
   }
 
+  if (typeof updates.time === 'string' && updates.time !== match.time) {
+    editEvents.push({
+      id: createId(),
+      field: 'time',
+      previousValue: match.time || '',
+      newValue: updates.time,
+      editedAt: now,
+      editedBy: updates.editor,
+    });
+    match.time = updates.time;
+  }
+
   if ('result' in updates) {
     const previousResult = match.result ?? null;
     const nextResult = updates.result ?? null;
@@ -700,6 +712,7 @@ const saveMatchApi = async (payload: SaveMatchPayload): Promise<MatchRecord> => 
       seasonId: null,
       opponent: payload.opponent,
       fixtureDate: payload.date,
+      kickoffTime: payload.time || null,
       venueType: mapVenueToApi(payload.result?.venue),
       squad,
       notes: null,

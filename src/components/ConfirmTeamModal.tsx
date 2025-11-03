@@ -4,9 +4,13 @@ import type { Allocation } from '../lib/types';
 interface ConfirmTeamModalProps {
   isOpen: boolean;
   initialDate: string;
+  initialTime?: string;
+  initialVenue?: 'Home' | 'Away' | 'Neutral';
+  initialOpponent?: string;
   onClose: () => void;
   onConfirm: (details: {
     date: string;
+    time: string;
     opponent: string;
     venue: 'Home' | 'Away' | 'Neutral';
     goalsFor: number | null;
@@ -25,6 +29,9 @@ interface ConfirmTeamModalProps {
 export function ConfirmTeamModal({
   isOpen,
   initialDate,
+  initialTime = '',
+  initialVenue = 'Home',
+  initialOpponent = '',
   onClose,
   onConfirm,
   allocation,
@@ -33,8 +40,9 @@ export function ConfirmTeamModal({
   error,
 }: ConfirmTeamModalProps) {
   const [date, setDate] = useState(initialDate);
-  const [opponent, setOpponent] = useState('');
-  const [venue, setVenue] = useState<'Home' | 'Away' | 'Neutral'>('Home');
+  const [time, setTime] = useState(initialTime);
+  const [opponent, setOpponent] = useState(initialOpponent);
+  const [venue, setVenue] = useState<'Home' | 'Away' | 'Neutral'>(initialVenue);
   const [goalsFor, setGoalsFor] = useState('');
   const [goalsAgainst, setGoalsAgainst] = useState('');
   const [outcome, setOutcome] = useState<'Win' | 'Loss' | 'Draw' | ''>('');
@@ -45,8 +53,9 @@ export function ConfirmTeamModal({
   useEffect(() => {
     if (isOpen) {
       setDate(initialDate);
-      setOpponent('');
-      setVenue('Home');
+      setTime(initialTime);
+      setOpponent(initialOpponent);
+      setVenue(initialVenue);
       setGoalsFor('');
       setGoalsAgainst('');
       setOutcome('');
@@ -54,7 +63,7 @@ export function ConfirmTeamModal({
       setHonorableMentions('');
       setScorers('');
     }
-  }, [initialDate, isOpen]);
+  }, [initialDate, initialTime, initialVenue, initialOpponent, isOpen]);
 
   if (!isOpen || !allocation || players.length === 0) {
     return null;
@@ -66,6 +75,7 @@ export function ConfirmTeamModal({
     const parsedGoalsAgainst = goalsAgainst.trim() === '' ? null : Number(goalsAgainst);
     await onConfirm({
       date,
+      time: time.trim(),
       opponent,
       venue,
       goalsFor: Number.isFinite(parsedGoalsFor) ? parsedGoalsFor : null,
@@ -99,21 +109,40 @@ export function ConfirmTeamModal({
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="match-date"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-            >
-              Match Date
-            </label>
-            <input
-              id="match-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label
+                htmlFor="match-date"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
+                Match Date *
+              </label>
+              <input
+                id="match-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="match-time"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
+                Kickoff Time
+              </label>
+              <input
+                id="match-time"
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                placeholder="e.g., 14:30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -234,14 +263,16 @@ export function ConfirmTeamModal({
                 className="block text-sm font-medium text-gray-700 dark:text-gray-200"
               >
                 Goalscorers
-                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">(comma separated)</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Format: "Player: Goals" (e.g. "Isla: 1, Lottie W: 2")
+                </span>
               </label>
               <textarea
                 id="match-scorers"
                 rows={2}
                 value={scorers}
                 onChange={(e) => setScorers(e.target.value)}
-                placeholder="e.g. Isla, Lottie W, Lottie W"
+                placeholder="e.g. Isla: 1, Lottie W: 2, Emma: 1"
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
             </div>

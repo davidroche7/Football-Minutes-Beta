@@ -1,8 +1,8 @@
-# Fair Football Minutes
+# Football Minutes
 
-> Calculate fair playing time distribution for 5-a-side football teams across 4 quarters.
+> Comprehensive team management tool for tracking your football season - lineups, stats, and fair playing time distribution.
 
-A full-stack TypeScript application for managing football team rosters, generating fair playing time allocations, tracking match results, and analyzing season statistics.
+A full-stack TypeScript application for managing football team rosters, generating fair playing time allocations, tracking match results, analyzing season statistics, and maintaining complete season records.
 
 ## ✨ Features
 

@@ -1,9 +1,9 @@
 {
-  "name": "fair-football-minutes",
+  "name": "football-minutes",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Calculate fair playing time distribution for 5-a-side football teams",
+  "description": "Comprehensive team management tool for tracking football season lineups, stats, and fair playing time distribution",
   "scripts": {
     "dev": "concurrently -n \"frontend,backend\" -c \"cyan,magenta\" \"npm:dev:frontend\" \"npm:dev:backend\"",
     "dev:frontend": "vite",

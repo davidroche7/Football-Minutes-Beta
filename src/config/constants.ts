@@ -1,5 +1,5 @@
 /**
- * Core configuration constants for Fair Football Minutes allocation
+ * Core configuration constants for football lineup allocation
  */
 
 import { DEFAULT_RULES, type RuleConfig } from './rules';

@@ -7,24 +7,18 @@ import {
   updateMatch,
   type MatchUpdatePayload,
   getMatchPersistenceMode,
-  getMatchPersistenceError,
   listMatches,
 } from '../lib/persistence';
 import { fetchTeamStats, fetchPlayerStats } from '../lib/statsClient';
 import { getRules } from '../lib/rules';
 import type { RuleConfig } from '../config/rules';
 import {
-  getRosterAudit,
   listRoster,
-  restorePlayer,
-  type RosterActionType,
-  type RosterAuditEntry,
   type RosterPlayer,
 } from '../lib/roster';
-import { fetchAuditEvents, type AuditEvent } from '../lib/auditClient';
 import { AllocationGrid } from './AllocationGrid';
 import { EditModal } from './EditModal';
-import { TEAM_ID, USE_API_PERSISTENCE } from '../config/environment';
+import { TEAM_ID } from '../config/environment';
 
 interface SeasonStatsViewProps {
   matches: MatchRecord[];
@@ -124,51 +118,6 @@ const normaliseVenueOption = (value?: string | null): VenueOption => {
   }
   return '';
 };
-
-const normaliseRosterAction = (eventType: string): RosterActionType => {
-  const key = eventType.trim().toLowerCase();
-  if (key === 'created' || key === 'added') return 'added';
-  if (key === 'removed' || key === 'deleted') return 'removed';
-  if (key === 'restored') return 'restored';
-  return 'updated';
-};
-
-const extractAuditPlayerName = (event: AuditEvent): string => {
-  const candidates: string[] = [];
-  const pushCandidate = (value: unknown) => {
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (trimmed) {
-        candidates.push(trimmed);
-      }
-    }
-  };
-
-  const inspectState = (state: unknown) => {
-    if (!state || typeof state !== 'object') return;
-    const record = state as Record<string, unknown>;
-    pushCandidate(record['displayName']);
-    pushCandidate(record['display_name']);
-    pushCandidate(record['name']);
-    pushCandidate(record['playerName']);
-    pushCandidate(record['player_name']);
-  };
-
-  inspectState(event.nextState);
-  inspectState(event.previousState);
-  inspectState(event.metadata);
-
-  return candidates.length > 0 ? candidates[0]! : 'Unknown Player';
-};
-
-const mapAuditEventToRosterEntry = (event: AuditEvent): RosterAuditEntry => ({
-  id: event.id,
-  playerId: event.entityId,
-  action: normaliseRosterAction(event.eventType),
-  actor: event.actorId ?? 'system',
-  timestamp: event.createdAt,
-  playerName: extractAuditPlayerName(event),
-});
 
 const normaliseOutcomeOption = (value?: string | null): OutcomeOption => {
   if (!value) return '';
@@ -306,31 +255,21 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   } | null>(null);
 
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
-  const [rosterError, setRosterError] = useState<string | null>(null);
-  const [rosterMessage, setRosterMessage] = useState<string | null>(null);
-  const [auditEntries, setAuditEntries] = useState<RosterAuditEntry[]>([]);
-  const [isRosterLoading, setIsRosterLoading] = useState(true);
-  const [isAuditLoading, setIsAuditLoading] = useState(true);
-  const [restorePendingId, setRestorePendingId] = useState<string | null>(null);
   const [apiSeasonSummary, setApiSeasonSummary] = useState<SeasonSnapshot | null>(null);
   const [apiPlayerSummaries, setApiPlayerSummaries] = useState<PlayerSummaryRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [matchPersistenceMode, setMatchPersistenceMode] = useState(() => getMatchPersistenceMode());
-  const [matchPersistenceError, setMatchPersistenceError] = useState(() =>
-    getMatchPersistenceError()?.message ?? null
-  );
   const configuredTeamId = TEAM_ID;
-  const showTeamConfigurationWarning = USE_API_PERSISTENCE && !configuredTeamId;
+
+  const [seasonStatsTab, setSeasonStatsTab] = useState<'games' | 'players'>('games');
 
   const rules = useMemo(() => getRules(), []);
   const perMatchTarget = rules.quarterDuration * rules.quarters;
 
   const refreshMatchPersistenceState = useCallback(() => {
     const mode = getMatchPersistenceMode();
-    const error = getMatchPersistenceError();
     setMatchPersistenceMode(mode);
-    setMatchPersistenceError(error?.message ?? null);
     return mode;
   }, []);
 
@@ -619,11 +558,25 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
       const allocation = cloneAllocation(draft.allocation);
       const targetQuarter = allocation.quarters.find((q) => q.quarter === quarter);
       if (!targetQuarter) return draft;
-      if (!targetQuarter.slots[slotIndex]) return draft;
-      targetQuarter.slots[slotIndex] = {
-        ...targetQuarter.slots[slotIndex]!,
-        player: toTitleCase(newPlayer),
-      };
+
+      // Handle adding new slot (slotIndex === -1 signals adding a new GK)
+      if (slotIndex === -1) {
+        const newGkSlot: PlayerSlot = {
+          player: toTitleCase(newPlayer),
+          position: 'GK',
+          minutes: 10,
+        };
+        // Insert GK at the beginning of slots array
+        targetQuarter.slots.unshift(newGkSlot);
+      } else {
+        // Handle editing existing slot
+        if (!targetQuarter.slots[slotIndex]) return draft;
+        targetQuarter.slots[slotIndex] = {
+          ...targetQuarter.slots[slotIndex]!,
+          player: toTitleCase(newPlayer),
+        };
+      }
+
       allocation.summary = recalcSummary(allocation);
       const players = derivePlayersFromAllocation(allocation, draft.players);
       return {
@@ -689,79 +642,20 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   useEffect(() => {
     let mounted = true;
     async function loadRoster() {
-      setIsRosterLoading(true);
-      setRosterError(null);
       try {
         const players = await listRoster({ includeRemoved: true });
         if (!mounted) return;
         setRoster(players);
       } catch (err) {
-        if (!mounted) return;
-        setRosterError(err instanceof Error ? err.message : 'Failed to load squad roster');
-      } finally {
-        if (mounted) setIsRosterLoading(false);
-      }
-    }
-
-    async function loadAudit() {
-      setIsAuditLoading(true);
-      try {
-        if (matchPersistenceMode === 'api') {
-          const events = await fetchAuditEvents({
-            entityType: 'PLAYER',
-            limit: 50,
-            teamId: configuredTeamId ?? undefined,
-          });
-          if (!mounted) return;
-          setAuditEntries(events.map(mapAuditEventToRosterEntry));
-        } else {
-          const entries = await getRosterAudit();
-          if (!mounted) return;
-          setAuditEntries(entries);
-        }
-      } catch (err) {
-        if (!mounted) return;
-        setRosterError((prev) => prev ?? (err instanceof Error ? err.message : 'Failed to load roster log'));
-      } finally {
-        if (mounted) setIsAuditLoading(false);
+        console.error('Failed to load squad roster:', err);
       }
     }
 
     loadRoster();
-    loadAudit();
     return () => {
       mounted = false;
     };
-  }, [configuredTeamId, matchPersistenceMode]);
-
-  const handleRestoreSquadPlayer = async (playerId: string) => {
-    setRestorePendingId(playerId);
-    setRosterError(null);
-    setRosterMessage(null);
-    try {
-      await restorePlayer(playerId, currentUser);
-      const [players, entries] = await Promise.all([
-        listRoster({ includeRemoved: true }),
-        matchPersistenceMode === 'api'
-          ? fetchAuditEvents({
-              entityType: 'PLAYER',
-              limit: 50,
-              teamId: configuredTeamId ?? undefined,
-            }).then((events) => events.map(mapAuditEventToRosterEntry))
-          : getRosterAudit(),
-      ]);
-      setRoster(players);
-      setAuditEntries(entries);
-      const restored = players.find((player) => player.id === playerId);
-      if (restored) {
-        setRosterMessage(`${restored.name} restored to active squad.`);
-      }
-    } catch (err) {
-      setRosterError(err instanceof Error ? err.message : 'Failed to restore player');
-    } finally {
-      setRestorePendingId(null);
-    }
-  };
+  }, []);
 
   const handleLegacyImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -874,153 +768,32 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         </div>
       )}
 
-      {showTeamConfigurationWarning && (
-        <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100">
-          API persistence is enabled but no team ID is configured (
-          <code className="font-mono text-xs">VITE_TEAM_ID</code>). Continuing with local data until a
-          team is assigned.
-        </div>
-      )}
-      {matchPersistenceMode === 'fallback' && matchPersistenceError && !showTeamConfigurationWarning && (
-        <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100">
-          API unavailable: {matchPersistenceError}. Working from local data until connectivity returns.
-        </div>
-      )}
-      {matchPersistenceMode === 'api' && statsError && (
-        <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100">
-          Unable to load backend season stats: {statsError}. Displaying local calculations instead.
-        </div>
-      )}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setSeasonStatsTab('games')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
+              seasonStatsTab === 'games'
+                ? 'border-green-500 text-green-600 dark:text-green-400'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Games
+          </button>
+          <button
+            onClick={() => setSeasonStatsTab('players')}
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
+              seasonStatsTab === 'players'
+                ? 'border-green-500 text-green-600 dark:text-green-400'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Players
+          </button>
+        </nav>
+      </div>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Squad Overview
-          </h3>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            Active: {roster.filter((player) => player.removedAt === null).length} · Removed:{' '}
-            {roster.filter((player) => player.removedAt !== null).length}
-          </div>
-        </div>
-        {rosterError && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200">
-            {rosterError}
-          </div>
-        )}
-        {rosterMessage && (
-          <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
-            {rosterMessage}
-          </div>
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Active Players
-            </h4>
-            {isRosterLoading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading squad…</p>
-            ) : rosterOptions.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No active players yet.</p>
-            ) : (
-              <ul className="space-y-1 text-sm text-gray-800 dark:text-gray-200">
-                {rosterOptions.map((player) => (
-                  <li key={player} className="rounded-md bg-gray-50 px-3 py-1 dark:bg-gray-900/40">
-                    {player}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="lg:col-span-1">
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Removed Players
-            </h4>
-            {isRosterLoading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
-            ) : roster.filter((player) => player.removedAt !== null).length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No removed players.</p>
-            ) : (
-              <ul className="space-y-2 text-sm text-gray-800 dark:text-gray-200">
-                {roster
-                  .filter((player) => player.removedAt !== null)
-                  .map((player) => {
-                    const pending = restorePendingId === player.id;
-                    return (
-                      <li
-                        key={player.id}
-                        className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
-                      >
-                        <div>
-                          <p className="font-medium">{player.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Removed{' '}
-                            {player.removedAt ? new Date(player.removedAt).toLocaleString() : 'unknown'}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleRestoreSquadPlayer(player.id)}
-                          disabled={pending}
-                          className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:text-gray-400 dark:text-blue-300 dark:hover:text-blue-200"
-                        >
-                          {pending ? 'Restoring…' : 'Restore'}
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
-            )}
-          </div>
-
-          <div className="lg:col-span-1">
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Roster Change Log
-            </h4>
-            {isAuditLoading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading history…</p>
-            ) : auditEntries.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Activity will appear here after squad changes.
-              </p>
-            ) : (
-              <ul className="space-y-2 text-xs text-gray-700 dark:text-gray-300">
-                {auditEntries
-                  .slice()
-                  .reverse()
-                  .map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
-                    >
-                      <p>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {entry.playerName}
-                        </span>{' '}
-                        was{' '}
-                        <span className="font-semibold">
-                          {entry.action === 'added'
-                            ? 'added'
-                            : entry.action === 'removed'
-                            ? 'removed'
-                            : entry.action === 'restored'
-                            ? 'restored'
-                            : 'updated'}
-                        </span>{' '}
-                        by {entry.actor}
-                      </p>
-                      <p className="mt-1 font-mono text-[11px] text-gray-500 dark:text-gray-400">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </p>
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {hasMatches && (
+      {seasonStatsTab === 'games' && hasMatches && (
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
             Season Snapshot
@@ -1063,46 +836,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         </div>
       )}
 
-      {hasMatches && (
-        <>
-          <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Fair Minutes Tracking</h3>
-            {playerSummaries.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No player data yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-300">Player</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">Total Minutes</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">Matches</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">GK Quarters</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">Target Minutes</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">Goals</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">POTM</th>
-                  <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">Hon. Mentions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {playerSummaries.map((row) => (
-                  <tr key={row.player} className="border-b border-gray-100 dark:border-gray-700/60">
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{row.player}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.totalMinutes}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.matchesPlayed}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.gkQuarters}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.targetMinutes}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.goals}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.playerOfMatchAwards}</td>
-                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{row.honorableMentions}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-              </div>
-            )}
-          </section>
-
+      {seasonStatsTab === 'games' && hasMatches && (
           <section className="space-y-4">
             {matches.map((match) => {
               const isExpanded = expandedMatches.includes(match.id);
@@ -1155,6 +889,11 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                               {resultPayload.result}
                             </span>
                           )}
+                        </div>
+                      )}
+                      {resultPayload && resultPayload.scorers && resultPayload.scorers.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                          <span className="font-semibold">Goalscorers:</span> {resultPayload.scorers.join(', ')}
                         </div>
                       )}
                     </div>
@@ -1340,7 +1079,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                           </label>
 
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                            Goalscorers <span className="text-xs text-gray-500 dark:text-gray-400">(comma separated, duplicates allowed)</span>
+                            Goalscorers <span className="text-xs text-gray-500 dark:text-gray-400">(Add goal counts in parentheses if needed)</span>
                             <textarea
                               value={resultDraft.scorers}
                               onChange={(e) =>
@@ -1352,8 +1091,9 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                                   },
                                 }))
                               }
+                              placeholder="e.g., John Smith (3), Jane Doe (2), Bob Jones (1), Alice Brown (1)"
                               rows={3}
-                              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500"
                             />
                           </label>
                         </div>
@@ -1441,7 +1181,92 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
               );
             })}
           </section>
-        </>
+      )}
+
+      {seasonStatsTab === 'players' && hasMatches && (
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+            Player Statistics
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">
+                    Player
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    Total Minutes
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    Matches
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    GK Quarters
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    Target Minutes
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    Balance
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    Goals
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    POTM
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    H.M.
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {playerSummaries.map((row) => {
+                  const balance = row.totalMinutes - row.targetMinutes;
+                  const balanceClass =
+                    balance > 0
+                      ? 'text-green-600 dark:text-green-400'
+                      : balance < 0
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-600 dark:text-gray-400';
+                  return (
+                    <tr key={row.player} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                        {row.player}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.totalMinutes}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.matchesPlayed}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.gkQuarters}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.targetMinutes}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-medium ${balanceClass}`}>
+                        {balance > 0 ? '+' : ''}
+                        {balance}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.goals}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.playerOfMatchAwards}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {row.honorableMentions}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       {modalState && (

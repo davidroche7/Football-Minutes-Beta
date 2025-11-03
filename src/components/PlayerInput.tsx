@@ -17,12 +17,13 @@ import { TEAM_ID, USE_API_PERSISTENCE } from '../config/environment';
 interface PlayerInputProps {
   onPlayersChange: (players: string[]) => void;
   currentUser: string;
+  showMatchSelection?: boolean;
 }
 
 /**
  * Component for inputting and managing the list of players
  */
-export function PlayerInput({ onPlayersChange, currentUser }: PlayerInputProps) {
+export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection = true }: PlayerInputProps) {
   const [playerName, setPlayerName] = useState('');
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
@@ -96,12 +97,16 @@ export function PlayerInput({ onPlayersChange, currentUser }: PlayerInputProps) 
   }, [refreshPersistenceState]);
 
   useEffect(() => {
+    if (!showMatchSelection) {
+      onPlayersChange([]);
+      return;
+    }
     const selectedNames = selectedPlayerIds
       .map((id) => roster.find((player) => player.id === id && player.removedAt === null))
       .filter((player): player is RosterPlayer => Boolean(player))
       .map((player) => player.name);
     onPlayersChange(selectedNames);
-  }, [selectedPlayerIds, roster, onPlayersChange]);
+  }, [selectedPlayerIds, roster, onPlayersChange, showMatchSelection]);
 
   const selectedPlayers = useMemo(
     () =>
@@ -325,15 +330,19 @@ export function PlayerInput({ onPlayersChange, currentUser }: PlayerInputProps) 
                     key={player.id}
                     className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
                   >
-                    <label className="flex items-center gap-3 text-gray-900 dark:text-white">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={selected}
-                        onChange={() => toggleSelection(player.id)}
-                      />
-                      <span>{player.name}</span>
-                    </label>
+                    {showMatchSelection ? (
+                      <label className="flex items-center gap-3 text-gray-900 dark:text-white">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={selected}
+                          onChange={() => toggleSelection(player.id)}
+                        />
+                        <span>{player.name}</span>
+                      </label>
+                    ) : (
+                      <span className="text-gray-900 dark:text-white">{player.name}</span>
+                    )}
                     <button
                       onClick={() => handleRemovePlayer(player.id)}
                       disabled={disabling}
@@ -348,51 +357,53 @@ export function PlayerInput({ onPlayersChange, currentUser }: PlayerInputProps) 
           )}
         </div>
 
-        <div className="flex-1">
-          <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-            Selected for this match ({selectedPlayers.length})
-          </h3>
-          {selectedPlayers.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Select players from your roster to build the match squad.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {selectedPlayers.map((player) => (
-                <span
-                  key={player.id}
-                  className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                >
-                  {player.name}
-                  <button
-                    onClick={() => toggleSelection(player.id)}
-                    className="text-blue-800 hover:text-blue-900 dark:text-blue-200 dark:hover:text-white"
-                    aria-label={`Remove ${player.name} from match squad`}
+        {showMatchSelection && (
+          <div className="flex-1">
+            <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Selected for this match ({selectedPlayers.length})
+            </h3>
+            {selectedPlayers.length === 0 ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Select players from your roster to build the match squad.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedPlayers.map((player) => (
+                  <span
+                    key={player.id}
+                    className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
                   >
-                    ×
-                  </button>
-                </span>
-              ))}
+                    {player.name}
+                    <button
+                      onClick={() => toggleSelection(player.id)}
+                      className="text-blue-800 hover:text-blue-900 dark:text-blue-200 dark:hover:text-white"
+                      aria-label={`Remove ${player.name} from match squad`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              {selectedPlayers.length < 5 && (
+                <p className="text-red-600 dark:text-red-400">
+                  Select at least 5 players to generate an allocation.
+                </p>
+              )}
+              {selectedPlayers.length >= 5 && selectedPlayers.length <= 15 && (
+                <p className="text-green-600 dark:text-green-400">
+                  Ready to generate allocation.
+                </p>
+              )}
+              {selectedPlayers.length > 15 && (
+                <p className="text-red-600 dark:text-red-400">
+                  Maximum 15 players can be selected for a match.
+                </p>
+              )}
             </div>
-          )}
-          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            {selectedPlayers.length < 5 && (
-              <p className="text-red-600 dark:text-red-400">
-                Select at least 5 players to generate an allocation.
-              </p>
-            )}
-            {selectedPlayers.length >= 5 && selectedPlayers.length <= 15 && (
-              <p className="text-green-600 dark:text-green-400">
-                Ready to generate allocation.
-              </p>
-            )}
-            {selectedPlayers.length > 15 && (
-              <p className="text-red-600 dark:text-red-400">
-                Maximum 15 players can be selected for a match.
-              </p>
-            )}
           </div>
-        </div>
+        )}
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">

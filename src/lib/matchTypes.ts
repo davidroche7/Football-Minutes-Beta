@@ -12,6 +12,7 @@ export interface MatchResult {
 
 export interface SaveMatchPayload {
   date: string;
+  time?: string; // HH:mm format, e.g., "14:30"
   opponent: string;
   players: string[];
   allocation: Allocation;
@@ -22,6 +23,7 @@ export interface SaveMatchPayload {
 export type MatchEditField =
   | 'opponent'
   | 'date'
+  | 'time'
   | 'result.venue'
   | 'result.result'
   | 'result.goalsFor'
@@ -56,6 +58,7 @@ export interface MatchRecord extends SaveMatchPayload {
 export interface MatchUpdatePayload {
   opponent?: string;
   date?: string;
+  time?: string;
   result?: MatchResult | null;
   allocation?: Allocation;
   players?: string[];

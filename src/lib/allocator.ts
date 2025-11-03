@@ -1,5 +1,5 @@
 /**
- * Core allocation algorithm for fair football minutes distribution
+ * Core allocation algorithm for fair football lineup and minutes distribution
  */
 
 import { CONFIG } from '../config/constants';

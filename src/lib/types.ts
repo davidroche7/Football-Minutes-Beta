@@ -1,5 +1,5 @@
 /**
- * Type definitions for Fair Football Minutes
+ * Type definitions for football lineup allocation
  */
 
 /** Position on the field */

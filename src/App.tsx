@@ -131,8 +131,22 @@ function App() {
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [confirmError, setConfirmError] = useState<string>('');
   const [isSavingMatch, setIsSavingMatch] = useState(false);
-  const [activeTab, setActiveTab] = useState<'match' | 'season' | 'rules'>('match');
+  const [activeTab, setActiveTab] = useState<'match' | 'season' | 'management'>('match');
   const [rules, setRules] = useState<RuleConfig>(() => getRules());
+
+  // Match setup state (NEW - at the beginning of flow)
+  const [matchSetupComplete, setMatchSetupComplete] = useState(false);
+  const [matchDetails, setMatchDetails] = useState<{
+    date: string;
+    time: string;
+    venue: 'Home' | 'Away' | 'Neutral';
+    opponent: string;
+  }>({
+    date: new Date().toISOString().split('T')[0] || '',
+    time: '',
+    venue: 'Home',
+    opponent: '',
+  });
 
   const refreshMatchPersistenceState = useCallback(() => {
     const mode = getMatchPersistenceMode();
@@ -369,6 +383,7 @@ function App() {
 
   const handleConfirmMatch = async ({
     date,
+    time,
     opponent,
     venue,
     goalsFor,
@@ -379,6 +394,7 @@ function App() {
     scorers,
   }: {
     date: string;
+    time: string;
     opponent: string;
     venue: 'Home' | 'Away' | 'Neutral';
     goalsFor: number | null;
@@ -420,6 +436,7 @@ function App() {
 
       await saveMatch({
         date,
+        time: time.trim() || undefined,
         opponent,
         players,
         allocation,
@@ -447,7 +464,7 @@ function App() {
     }
   };
 
-  const initialDate = new Date().toISOString().slice(0, 10);
+  // Initial date moved to matchDetails state
 
   const handleLogout = () => {
     setSession(null);
@@ -479,10 +496,10 @@ function App() {
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6">
           <header className="text-center">
             <h1 className="mb-2 text-4xl font-bold text-gray-900 dark:text-white">
-              Fair Football Minutes
+              Football Minutes
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Sign in to manage match setups, season stats, and rules.
+              Comprehensive team management for tracking your season
             </p>
           </header>
           <LoginForm
@@ -514,10 +531,10 @@ function App() {
         {/* Header */}
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-            Fair Football Minutes
+            Football Minutes
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Calculate fair playing time distribution for 5-a-side football
+            Team management tool for tracking lineups, stats, and fair playing time
           </p>
           <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
             <span>
@@ -534,9 +551,9 @@ function App() {
 
         <Tabs
           tabs={[
-            { id: 'match', label: 'Match Setup' },
+            { id: 'match', label: 'Next Match' },
             { id: 'season', label: 'Season Stats' },
-            { id: 'rules', label: 'Rules Engine' },
+            { id: 'management', label: 'Player List & Rules' },
           ]}
           activeTab={activeTab}
           onSelect={(id) => setActiveTab(id as typeof activeTab)}
@@ -554,8 +571,120 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'match' && (
+        {activeTab === 'match' && !matchSetupComplete && (
+          <section className="mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
+              Match Setup
+            </h2>
+            <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+              Enter match details before selecting your lineup
+            </p>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!matchDetails.opponent.trim()) {
+                alert('Please enter opponent name');
+                return;
+              }
+              setMatchSetupComplete(true);
+            }} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label htmlFor="setup-date" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Match Date *
+                  </label>
+                  <input
+                    id="setup-date"
+                    type="date"
+                    value={matchDetails.date}
+                    onChange={(e) => setMatchDetails({ ...matchDetails, date: e.target.value })}
+                    required
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="setup-time" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Kickoff Time
+                  </label>
+                  <input
+                    id="setup-time"
+                    type="time"
+                    value={matchDetails.time}
+                    onChange={(e) => setMatchDetails({ ...matchDetails, time: e.target.value })}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label htmlFor="setup-venue" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Venue *
+                  </label>
+                  <select
+                    id="setup-venue"
+                    value={matchDetails.venue}
+                    onChange={(e) => setMatchDetails({ ...matchDetails, venue: e.target.value as typeof matchDetails.venue })}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="Home">Home</option>
+                    <option value="Away">Away</option>
+                    <option value="Neutral">Neutral</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="setup-opponent" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Opponent *
+                  </label>
+                  <input
+                    id="setup-opponent"
+                    type="text"
+                    value={matchDetails.opponent}
+                    onChange={(e) => setMatchDetails({ ...matchDetails, opponent: e.target.value })}
+                    placeholder="e.g., Eastside Eagles"
+                    required
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="rounded-md bg-green-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                >
+                  Continue to Player Selection
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {activeTab === 'match' && matchSetupComplete && (
           <>
+            <div className="mb-4 flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {matchDetails.date} {matchDetails.time && `at ${matchDetails.time}`}
+                </span>
+                {' vs '}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {matchDetails.opponent}
+                </span>
+                {' ('}
+                <span>{matchDetails.venue}</span>
+                {')'}
+              </div>
+              <button
+                onClick={() => setMatchSetupComplete(false)}
+                className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Edit Match Details
+              </button>
+            </div>
+
             <section className="mx-auto mb-8 w-full max-w-5xl rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <header className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -688,7 +817,10 @@ function App() {
 
                 <ConfirmTeamModal
                   isOpen={confirmModalOpen}
-                  initialDate={initialDate}
+                  initialDate={matchDetails.date}
+                  initialTime={matchDetails.time || ''}
+                  initialVenue={matchDetails.venue}
+                  initialOpponent={matchDetails.opponent}
                   onClose={() => setConfirmModalOpen(false)}
                   onConfirm={handleConfirmMatch}
                   allocation={allocation}
@@ -725,8 +857,26 @@ function App() {
             currentUser={session.username}
           />
         )}
-        {activeTab === 'rules' && (
-          <RulesEngineView rules={rules} onSave={handleRulesSave} onReset={handleRulesReset} />
+        {activeTab === 'management' && (
+          <div className="space-y-8">
+            <section className="mx-auto max-w-5xl rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Player Roster Management
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Manage your complete team roster. Add new players, update player information, or remove players from the roster.
+                Players added here will be available for selection in the "Next Match" module.
+              </p>
+              <PlayerInput
+                onPlayersChange={handlePlayersChange}
+                currentUser={session.username}
+                showMatchSelection={false}
+              />
+            </section>
+            <section className="mx-auto max-w-5xl">
+              <RulesEngineView rules={rules} onSave={handleRulesSave} onReset={handleRulesReset} />
+            </section>
+          </div>
         )}
       </div>
     </div>
