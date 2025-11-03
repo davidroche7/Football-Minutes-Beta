@@ -18,6 +18,7 @@ import {
 } from '../lib/roster';
 import { AllocationGrid } from './AllocationGrid';
 import { EditModal } from './EditModal';
+import { PlayerHeatMap } from './PlayerHeatMap';
 import { TEAM_ID } from '../config/environment';
 
 interface SeasonStatsViewProps {
@@ -1266,6 +1267,12 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {seasonStatsTab === 'players' && hasMatches && (
+        <section className="mt-6">
+          <PlayerHeatMap matches={matches} />
         </section>
       )}
 
