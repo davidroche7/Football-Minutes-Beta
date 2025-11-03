@@ -4,9 +4,6 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Comprehensive team management tool for tracking football season lineups, stats, and fair playing time distribution",
-  "engines": {
-    "node": "20.x"
-  },
   "scripts": {
     "dev": "concurrently -n \"frontend,backend\" -c \"cyan,magenta\" \"npm:dev:frontend\" \"npm:dev:backend\"",
     "dev:frontend": "vite",
