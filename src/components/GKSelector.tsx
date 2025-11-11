@@ -26,7 +26,13 @@ export function GKSelector({ players, selectedGKs, onGKsChange }: GKSelectorProp
   };
 
   if (players.length < 5) {
-    return null;
+    return (
+      <div className="w-full max-w-4xl mx-auto p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg mb-8">
+        <p className="text-sm text-yellow-800 dark:text-yellow-200">
+          <span className="font-semibold">GK Selection:</span> Select at least 5 players to enable goalkeeper assignment.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -39,6 +45,7 @@ export function GKSelector({ players, selectedGKs, onGKsChange }: GKSelectorProp
           <button
             onClick={handleClear}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+            aria-label="Clear all manual GK selections and use automatic allocation"
           >
             Clear GK Selection
           </button>
@@ -46,7 +53,7 @@ export function GKSelector({ players, selectedGKs, onGKsChange }: GKSelectorProp
       </div>
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        Select specific players to be GK for each quarter. Leave unselected for automatic allocation.
+        Select specific players to be GK for each quarter. Leave set to "Auto" for automatic allocation based on fair playing time.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

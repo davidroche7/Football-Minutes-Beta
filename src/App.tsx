@@ -222,7 +222,14 @@ function App() {
   const handlePlayersChange = (newPlayers: string[]) => {
     setPlayers(newPlayers);
     setError('');
-    setManualGKs(null); // Reset manual GKs when players change
+
+    // Only reset manual GKs if selected GKs are no longer in the player list
+    if (manualGKs) {
+      const invalidGKs = manualGKs.some(gk => gk && !newPlayers.includes(gk));
+      if (invalidGKs) {
+        setManualGKs(null);
+      }
+    }
 
     // Auto-generate allocation if we have enough players
     if (newPlayers.length >= 5 && newPlayers.length <= 15) {
@@ -762,13 +769,11 @@ function App() {
               />
             </div>
 
-            {players.length >= 5 && (
-              <GKSelector
-                players={players}
-                selectedGKs={manualGKs}
-                onGKsChange={handleGKsChange}
-              />
-            )}
+            <GKSelector
+              players={players}
+              selectedGKs={manualGKs}
+              onGKsChange={handleGKsChange}
+            />
 
             {players.length >= 5 && players.length <= 15 && !allocation && (
               <div className="text-center mb-8">
