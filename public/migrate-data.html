@@ -433,7 +433,23 @@
             }
           }
           if (match.allocation) {
-            log(`   Players in lineup: ${Object.keys(match.allocation.summary || {}).length}`, 'info');
+            const playerCount = Object.keys(match.allocation.summary || {}).length;
+            log(`   Players in lineup: ${playerCount}`, 'info');
+
+            // Show GK assignments per quarter
+            if (match.allocation.quarters && match.allocation.quarters.length > 0) {
+              const gks = match.allocation.quarters.map((q, idx) => {
+                const gkSlot = q.slots.find(s => s.position === 'GK');
+                return gkSlot ? `Q${idx + 1}: ${gkSlot.player}` : `Q${idx + 1}: -`;
+              });
+              log(`   GKs: ${gks.join(', ')}`, 'info');
+            }
+
+            // Show total playing time
+            const totalMinutes = Object.values(match.allocation.summary || {}).reduce((sum, mins) => sum + (typeof mins === 'number' ? mins : 0), 0);
+            log(`   Total playing time: ${totalMinutes} minutes`, 'info');
+          } else {
+            log(`   ⚠️  No lineup data (draft or old format)`, 'warning');
           }
         });
         if (matches.length > 5) {
