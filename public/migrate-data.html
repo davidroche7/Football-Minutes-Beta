@@ -178,11 +178,15 @@
         // Get all FFM data
         const matchesJson = localStorage.getItem('ffm:matches');
         const rosterJson = localStorage.getItem('ffm:roster');
+        const rulesJson = localStorage.getItem('ffm:rules');
         const sessionJson = localStorage.getItem('ffm:session');
 
         const matches = matchesJson ? JSON.parse(matchesJson) : [];
-        const roster = rosterJson ? JSON.parse(rosterJson) : [];
+        const rosterData = rosterJson ? JSON.parse(rosterJson) : { players: [], audit: [] };
         const session = sessionJson ? JSON.parse(sessionJson) : null;
+
+        // Handle both old and new roster format
+        const players = Array.isArray(rosterData) ? rosterData : (rosterData.players || []);
 
         // Calculate storage size
         let totalSize = 0;
@@ -192,13 +196,34 @@
           }
         }
 
-        // Update stats
+        // Count detailed stats
+        let totalGoals = 0;
+        let potmCount = 0;
+        let honorableMentionsCount = 0;
+        let matchesWithResults = 0;
+
+        matches.forEach(match => {
+          if (match.result) {
+            matchesWithResults++;
+            if (match.result.scorers && Array.isArray(match.result.scorers)) {
+              totalGoals += match.result.scorers.length;
+            }
+            if (match.result.playerOfMatch) {
+              potmCount++;
+            }
+            if (match.result.honorableMentions && Array.isArray(match.result.honorableMentions)) {
+              honorableMentionsCount += match.result.honorableMentions.length;
+            }
+          }
+        });
+
+        // Update stats display
         document.getElementById('matchCount').textContent = matches.length;
-        document.getElementById('rosterCount').textContent = roster.length;
+        document.getElementById('rosterCount').textContent = players.length;
         document.getElementById('storageSize').textContent = formatBytes(totalSize);
 
         log(`Found ${matches.length} matches`, 'success');
-        log(`Found ${roster.length} players`, 'success');
+        log(`Found ${players.length} players`, 'success');
         log(`Total storage: ${formatBytes(totalSize)}`, 'info');
 
         // Analyze matches
@@ -206,20 +231,47 @@
           const earliest = matches.reduce((min, m) => m.date < min ? m.date : min, matches[0].date);
           const latest = matches.reduce((max, m) => m.date > max ? m.date : max, matches[0].date);
           log(`Date range: ${earliest} to ${latest}`, 'info');
-
-          const withResults = matches.filter(m => m.result).length;
-          log(`Matches with results: ${withResults}/${matches.length}`, 'info');
+          log(`Matches with results: ${matchesWithResults}/${matches.length}`, 'info');
+          log(`Total goals scored: ${totalGoals}`, 'info');
+          log(`POTM awards: ${potmCount}`, 'info');
+          log(`Honorable mentions: ${honorableMentionsCount}`, 'info');
         }
 
         // Analyze roster
-        if (roster.length > 0) {
-          const active = roster.filter(p => !p.removedAt).length;
-          const removed = roster.filter(p => p.removedAt).length;
+        if (players.length > 0) {
+          const active = players.filter(p => !p.removedAt).length;
+          const removed = players.filter(p => p.removedAt).length;
           log(`Active players: ${active}`, 'info');
           log(`Removed players: ${removed}`, 'info');
+
+          const withSquadNumbers = players.filter(p => p.squadNumber).length;
+          if (withSquadNumbers > 0) {
+            log(`Players with squad numbers: ${withSquadNumbers}`, 'info');
+          }
+
+          const withPositions = players.filter(p => p.preferredPositions && p.preferredPositions.length > 0).length;
+          if (withPositions > 0) {
+            log(`Players with preferred positions: ${withPositions}`, 'info');
+          }
         }
 
-        log('Analysis complete!', 'success');
+        // Analyze roster audit
+        if (rosterData.audit && rosterData.audit.length > 0) {
+          log(`Roster change history entries: ${rosterData.audit.length}`, 'info');
+        }
+
+        // Show storage keys
+        log('\nStorage keys found:', 'info');
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('ffm:')) {
+            const size = localStorage[key].length * 2;
+            log(`  ${key}: ${formatBytes(size)}`, 'info');
+          }
+        }
+
+        log('\n✅ Analysis complete!', 'success');
+        log('⚠️  All data shown above will be included in backup', 'warning');
 
       } catch (error) {
         log(`Error analyzing data: ${error.message}`, 'error');
@@ -231,23 +283,85 @@
       log('Exporting localStorage data...', 'info');
 
       try {
-        // Get all FFM data
+        // Get all FFM data (including ALL keys starting with ffm:)
         const matchesJson = localStorage.getItem('ffm:matches');
         const rosterJson = localStorage.getItem('ffm:roster');
+        const rulesJson = localStorage.getItem('ffm:rules');
         const sessionJson = localStorage.getItem('ffm:session');
 
+        // Get all other ffm: keys
+        const otherKeys = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('ffm:') && !['ffm:matches', 'ffm:roster', 'ffm:rules', 'ffm:session'].includes(key)) {
+            otherKeys[key] = localStorage.getItem(key);
+          }
+        }
+
+        // Parse the data
+        const matches = matchesJson ? JSON.parse(matchesJson) : [];
+        const rosterData = rosterJson ? JSON.parse(rosterJson) : { players: [], audit: [] };
+        const rulesData = rulesJson ? JSON.parse(rulesJson) : null;
+
+        // Extract detailed stats
+        let totalPlayers = 0;
+        let activePlayers = 0;
+        let removedPlayers = 0;
+
+        if (Array.isArray(rosterData)) {
+          // Old format (just array of players)
+          totalPlayers = rosterData.length;
+          activePlayers = rosterData.filter(p => !p.removedAt).length;
+          removedPlayers = rosterData.filter(p => p.removedAt).length;
+        } else if (rosterData.players) {
+          // New format (object with players and audit)
+          totalPlayers = rosterData.players.length;
+          activePlayers = rosterData.players.filter(p => !p.removedAt).length;
+          removedPlayers = rosterData.players.filter(p => p.removedAt).length;
+        }
+
+        // Count goals, POTM, etc from matches
+        let totalGoals = 0;
+        let potmCount = 0;
+        let honorableMentionsCount = 0;
+        let matchesWithResults = 0;
+
+        matches.forEach(match => {
+          if (match.result) {
+            matchesWithResults++;
+            if (match.result.scorers && Array.isArray(match.result.scorers)) {
+              totalGoals += match.result.scorers.length;
+            }
+            if (match.result.playerOfMatch) {
+              potmCount++;
+            }
+            if (match.result.honorableMentions && Array.isArray(match.result.honorableMentions)) {
+              honorableMentionsCount += match.result.honorableMentions.length;
+            }
+          }
+        });
+
         const exportData = {
-          version: '1.0',
+          version: '2.0',
           exportDate: new Date().toISOString(),
           browser: navigator.userAgent,
           data: {
-            matches: matchesJson ? JSON.parse(matchesJson) : [],
-            roster: rosterJson ? JSON.parse(rosterJson) : [],
+            matches: matches,
+            roster: rosterData,
+            rules: rulesData,
             session: sessionJson ? JSON.parse(sessionJson) : null,
+            other: otherKeys,
           },
           stats: {
-            matchCount: matchesJson ? JSON.parse(matchesJson).length : 0,
-            rosterCount: rosterJson ? JSON.parse(rosterJson).length : 0,
+            matchCount: matches.length,
+            matchesWithResults: matchesWithResults,
+            totalPlayers: totalPlayers,
+            activePlayers: activePlayers,
+            removedPlayers: removedPlayers,
+            totalGoals: totalGoals,
+            potmAwards: potmCount,
+            honorableMentions: honorableMentionsCount,
+            rosterAuditEntries: rosterData.audit ? rosterData.audit.length : 0,
           }
         };
 
@@ -264,8 +378,14 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        log(`Exported ${exportData.stats.matchCount} matches`, 'success');
-        log(`Exported ${exportData.stats.rosterCount} players`, 'success');
+        log(`✅ Exported ${exportData.stats.matchCount} matches`, 'success');
+        log(`✅ Exported ${exportData.stats.totalPlayers} players (${exportData.stats.activePlayers} active)`, 'success');
+        log(`✅ Exported ${exportData.stats.totalGoals} goals`, 'success');
+        log(`✅ Exported ${exportData.stats.potmAwards} POTM awards`, 'success');
+        log(`✅ Exported ${exportData.stats.honorableMentions} honorable mentions`, 'success');
+        if (rosterData.audit && rosterData.audit.length > 0) {
+          log(`✅ Exported ${exportData.stats.rosterAuditEntries} roster changes`, 'success');
+        }
         log('File downloaded successfully!', 'success');
         log('Keep this file safe before migrating to database mode!', 'warning');
 
@@ -281,6 +401,7 @@
       try {
         const matchesJson = localStorage.getItem('ffm:matches');
         const rosterJson = localStorage.getItem('ffm:roster');
+        const rulesJson = localStorage.getItem('ffm:rules');
 
         if (!matchesJson && !rosterJson) {
           log('No data found in localStorage!', 'warning');
@@ -289,13 +410,30 @@
         }
 
         const matches = matchesJson ? JSON.parse(matchesJson) : [];
-        const roster = rosterJson ? JSON.parse(rosterJson) : [];
+        const rosterData = rosterJson ? JSON.parse(rosterJson) : { players: [], audit: [] };
+        const rulesData = rulesJson ? JSON.parse(rulesJson) : null;
+
+        // Handle both old and new roster format
+        const players = Array.isArray(rosterData) ? rosterData : (rosterData.players || []);
 
         log('\n=== MATCHES ===', 'info');
         matches.slice(0, 5).forEach((match, i) => {
-          log(`${i + 1}. ${match.date} vs ${match.opponent} (${match.venue || 'N/A'})`, 'info');
+          log(`${i + 1}. ${match.date} vs ${match.opponent} (${match.venue || match.metadata?.venueType || 'N/A'})`, 'info');
           if (match.result) {
-            log(`   Result: ${match.result.result || 'N/A'}`, 'info');
+            const score = match.result.goalsFor !== undefined ? `${match.result.goalsFor}-${match.result.goalsAgainst}` : 'N/A';
+            log(`   Result: ${match.result.result || 'N/A'} (${score})`, 'info');
+            if (match.result.playerOfMatch) {
+              log(`   POTM: ${match.result.playerOfMatch}`, 'info');
+            }
+            if (match.result.scorers && match.result.scorers.length > 0) {
+              log(`   Goals: ${match.result.scorers.join(', ')}`, 'info');
+            }
+            if (match.result.honorableMentions && match.result.honorableMentions.length > 0) {
+              log(`   Mentions: ${match.result.honorableMentions.join(', ')}`, 'info');
+            }
+          }
+          if (match.allocation) {
+            log(`   Players in lineup: ${Object.keys(match.allocation.summary || {}).length}`, 'info');
           }
         });
         if (matches.length > 5) {
@@ -303,12 +441,33 @@
         }
 
         log('\n=== ROSTER ===', 'info');
-        roster.slice(0, 10).forEach((player, i) => {
+        players.slice(0, 10).forEach((player, i) => {
           const status = player.removedAt ? '(removed)' : '(active)';
-          log(`${i + 1}. ${player.name} ${status}`, 'info');
+          const squadNum = player.squadNumber ? `#${player.squadNumber}` : '';
+          const positions = player.preferredPositions && player.preferredPositions.length > 0
+            ? ` [${player.preferredPositions.join(', ')}]`
+            : '';
+          log(`${i + 1}. ${player.name || player.displayName} ${squadNum} ${status}${positions}`, 'info');
         });
-        if (roster.length > 10) {
-          log(`... and ${roster.length - 10} more players`, 'info');
+        if (players.length > 10) {
+          log(`... and ${players.length - 10} more players`, 'info');
+        }
+
+        if (rosterData.audit && rosterData.audit.length > 0) {
+          log('\n=== ROSTER CHANGES ===', 'info');
+          rosterData.audit.slice(0, 5).forEach((entry, i) => {
+            log(`${i + 1}. ${entry.playerName} ${entry.action} by ${entry.actor} (${new Date(entry.timestamp).toLocaleString()})`, 'info');
+          });
+          if (rosterData.audit.length > 5) {
+            log(`... and ${rosterData.audit.length - 5} more changes`, 'info');
+          }
+        }
+
+        if (rulesData) {
+          log('\n=== MATCH RULES ===', 'info');
+          log(`Max variance: ${rulesData.maxVariance || 'N/A'} minutes`, 'info');
+          log(`Max consecutive subs: ${rulesData.maxConsecutiveSubs || 'N/A'}`, 'info');
+          log(`GK must play outfield: ${rulesData.gkMustPlayOutfield ? 'Yes' : 'No'}`, 'info');
         }
 
         log('\nPreview complete!', 'success');
