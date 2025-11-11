@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Minutes - Data Export Tool</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    button {
+      background: #0070f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background: #0051cc;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .danger {
+      background: #e00;
+    }
+    .danger:hover {
+      background: #c00;
+    }
+    .success {
+      background: #0a0;
+    }
+    .success:hover {
+      background: #080;
+    }
+    #output {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      min-height: 100px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-box {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0070f3;
+    }
+    .stat-number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #0070f3;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .success-box {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚽ Football Minutes - Data Export Tool</h1>
+    <p class="subtitle">Export your localStorage data before migrating to database mode</p>
+
+    <div class="stats" id="stats">
+      <div class="stat-box">
+        <div class="stat-number" id="matchCount">-</div>
+        <div class="stat-label">Matches</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="rosterCount">-</div>
+        <div class="stat-label">Players</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="storageSize">-</div>
+        <div class="stat-label">Storage Used</div>
+      </div>
+    </div>
+
+    <div class="warning">
+      <strong>⚠️ Important:</strong> This tool exports your data from browser localStorage.
+      Keep this backup safe before switching to database mode!
+    </div>
+
+    <div>
+      <button onclick="analyzeData()">🔍 Analyze Data</button>
+      <button onclick="exportData()" class="success">💾 Download Backup</button>
+      <button onclick="viewData()">👁️ View Data</button>
+      <button onclick="clearOutput()">🗑️ Clear Output</button>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const output = document.getElementById('output');
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const prefix = {
+        info: 'ℹ️',
+        success: '✅',
+        error: '❌',
+        warning: '⚠️'
+      }[type] || 'ℹ️';
+
+      output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function clearOutput() {
+      output.textContent = '';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function analyzeData() {
+      log('Analyzing localStorage data...', 'info');
+
+      try {
+        // Get all FFM data
+        const matchesJson = localStorage.getItem('ffm:matches');
+        const rosterJson = localStorage.getItem('ffm:roster');
+        const sessionJson = localStorage.getItem('ffm:session');
+
+        const matches = matchesJson ? JSON.parse(matchesJson) : [];
+        const roster = rosterJson ? JSON.parse(rosterJson) : [];
+        const session = sessionJson ? JSON.parse(sessionJson) : null;
+
+        // Calculate storage size
+        let totalSize = 0;
+        for (let key in localStorage) {
+          if (key.startsWith('ffm:')) {
+            totalSize += localStorage[key].length * 2; // Rough estimate (UTF-16)
+          }
+        }
+
+        // Update stats
+        document.getElementById('matchCount').textContent = matches.length;
+        document.getElementById('rosterCount').textContent = roster.length;
+        document.getElementById('storageSize').textContent = formatBytes(totalSize);
+
+        log(`Found ${matches.length} matches`, 'success');
+        log(`Found ${roster.length} players`, 'success');
+        log(`Total storage: ${formatBytes(totalSize)}`, 'info');
+
+        // Analyze matches
+        if (matches.length > 0) {
+          const earliest = matches.reduce((min, m) => m.date < min ? m.date : min, matches[0].date);
+          const latest = matches.reduce((max, m) => m.date > max ? m.date : max, matches[0].date);
+          log(`Date range: ${earliest} to ${latest}`, 'info');
+
+          const withResults = matches.filter(m => m.result).length;
+          log(`Matches with results: ${withResults}/${matches.length}`, 'info');
+        }
+
+        // Analyze roster
+        if (roster.length > 0) {
+          const active = roster.filter(p => !p.removedAt).length;
+          const removed = roster.filter(p => p.removedAt).length;
+          log(`Active players: ${active}`, 'info');
+          log(`Removed players: ${removed}`, 'info');
+        }
+
+        log('Analysis complete!', 'success');
+
+      } catch (error) {
+        log(`Error analyzing data: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    function exportData() {
+      log('Exporting localStorage data...', 'info');
+
+      try {
+        // Get all FFM data
+        const matchesJson = localStorage.getItem('ffm:matches');
+        const rosterJson = localStorage.getItem('ffm:roster');
+        const sessionJson = localStorage.getItem('ffm:session');
+
+        const exportData = {
+          version: '1.0',
+          exportDate: new Date().toISOString(),
+          browser: navigator.userAgent,
+          data: {
+            matches: matchesJson ? JSON.parse(matchesJson) : [],
+            roster: rosterJson ? JSON.parse(rosterJson) : [],
+            session: sessionJson ? JSON.parse(sessionJson) : null,
+          },
+          stats: {
+            matchCount: matchesJson ? JSON.parse(matchesJson).length : 0,
+            rosterCount: rosterJson ? JSON.parse(rosterJson).length : 0,
+          }
+        };
+
+        // Create downloadable file
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+          type: 'application/json'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `football-minutes-backup-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        log(`Exported ${exportData.stats.matchCount} matches`, 'success');
+        log(`Exported ${exportData.stats.rosterCount} players`, 'success');
+        log('File downloaded successfully!', 'success');
+        log('Keep this file safe before migrating to database mode!', 'warning');
+
+      } catch (error) {
+        log(`Error exporting data: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    function viewData() {
+      log('Loading data preview...', 'info');
+
+      try {
+        const matchesJson = localStorage.getItem('ffm:matches');
+        const rosterJson = localStorage.getItem('ffm:roster');
+
+        if (!matchesJson && !rosterJson) {
+          log('No data found in localStorage!', 'warning');
+          log('Make sure you are on the correct browser where you entered your data.', 'warning');
+          return;
+        }
+
+        const matches = matchesJson ? JSON.parse(matchesJson) : [];
+        const roster = rosterJson ? JSON.parse(rosterJson) : [];
+
+        log('\n=== MATCHES ===', 'info');
+        matches.slice(0, 5).forEach((match, i) => {
+          log(`${i + 1}. ${match.date} vs ${match.opponent} (${match.venue || 'N/A'})`, 'info');
+          if (match.result) {
+            log(`   Result: ${match.result.result || 'N/A'}`, 'info');
+          }
+        });
+        if (matches.length > 5) {
+          log(`... and ${matches.length - 5} more matches`, 'info');
+        }
+
+        log('\n=== ROSTER ===', 'info');
+        roster.slice(0, 10).forEach((player, i) => {
+          const status = player.removedAt ? '(removed)' : '(active)';
+          log(`${i + 1}. ${player.name} ${status}`, 'info');
+        });
+        if (roster.length > 10) {
+          log(`... and ${roster.length - 10} more players`, 'info');
+        }
+
+        log('\nPreview complete!', 'success');
+
+      } catch (error) {
+        log(`Error viewing data: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    // Auto-analyze on page load
+    window.addEventListener('load', () => {
+      setTimeout(analyzeData, 500);
+    });
+  </script>
+</body>
+</html>
