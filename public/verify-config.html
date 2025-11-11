@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Configuration</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #0f0;
+    }
+    h1 { color: #0f0; }
+    .check { color: #0f0; }
+    .fail { color: #f00; }
+    .warning { color: #ff0; }
+    pre {
+      background: #000;
+      padding: 10px;
+      border: 1px solid #0f0;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚙️ Football Minutes - Configuration Verification</h1>
+  <pre id="output">Checking configuration...</pre>
+
+  <script type="module">
+    const output = document.getElementById('output');
+
+    function log(msg, type = 'info') {
+      const className = type === 'success' ? 'check' : type === 'error' ? 'fail' : type === 'warning' ? 'warning' : '';
+      const line = document.createElement('div');
+      line.className = className;
+      line.textContent = msg;
+      output.appendChild(line);
+    }
+
+    output.textContent = '';
+
+    // Import environment config
+    import('/src/config/environment.ts?' + Date.now()).then(env => {
+      log('═══════════════════════════════════════════════');
+      log('ENVIRONMENT CONFIGURATION');
+      log('═══════════════════════════════════════════════\n');
+
+      log(`USE_API_PERSISTENCE: ${env.USE_API_PERSISTENCE}`, env.USE_API_PERSISTENCE ? 'success' : 'error');
+      log(`API_BASE_URL: ${env.API_BASE_URL}`);
+      log(`TEAM_ID: ${env.TEAM_ID ? '✓ Set (' + env.TEAM_ID.substring(0, 8) + '...)' : '✗ Not set'}`, env.TEAM_ID ? 'success' : 'error');
+      log(`SESSION_SECRET: ${env.SESSION_SECRET === 'dev-session-secret' ? '⚠ Using default (not secure!)' : '✓ Custom secret set'}`, env.SESSION_SECRET === 'dev-session-secret' ? 'warning' : 'success');
+      log(`DEFAULT_ACTOR_ROLES: ${env.DEFAULT_ACTOR_ROLES.join(', ')}`);
+
+      log('\n═══════════════════════════════════════════════');
+      log('PERSISTENCE MODE');
+      log('═══════════════════════════════════════════════\n');
+
+      if (env.USE_API_PERSISTENCE && env.TEAM_ID) {
+        log('✓ API MODE ENABLED', 'success');
+        log('  Data will be saved to PostgreSQL database', 'success');
+        log('  Data will sync across all browsers/devices', 'success');
+      } else if (env.USE_API_PERSISTENCE && !env.TEAM_ID) {
+        log('✗ API MODE FAILED - Missing TEAM_ID', 'error');
+        log('  Falling back to localStorage only', 'error');
+      } else {
+        log('ℹ LOCAL STORAGE MODE', 'warning');
+        log('  Data saved in browser only', 'warning');
+        log('  Not synced across devices', 'warning');
+      }
+
+      log('\n═══════════════════════════════════════════════');
+      log('IMPORT.META.ENV (Raw Vite Variables)');
+      log('═══════════════════════════════════════════════\n');
+
+      const viteEnv = import.meta.env;
+      log(`VITE_USE_API: ${viteEnv.VITE_USE_API || 'undefined'}`, viteEnv.VITE_USE_API ? 'success' : 'error');
+      log(`VITE_API_BASE_URL: ${viteEnv.VITE_API_BASE_URL || 'undefined'}`);
+      log(`VITE_TEAM_ID: ${viteEnv.VITE_TEAM_ID ? '✓ Set' : '✗ Not set'}`, viteEnv.VITE_TEAM_ID ? 'success' : 'error');
+      log(`VITE_SESSION_SECRET: ${viteEnv.VITE_SESSION_SECRET ? '✓ Set' : '✗ Not set'}`, viteEnv.VITE_SESSION_SECRET ? 'success' : 'error');
+      log(`VITE_ACTOR_ROLES: ${viteEnv.VITE_ACTOR_ROLES || 'undefined'}`);
+
+      log('\n═══════════════════════════════════════════════');
+      log('DIAGNOSIS');
+      log('═══════════════════════════════════════════════\n');
+
+      if (env.USE_API_PERSISTENCE && env.TEAM_ID) {
+        log('✓ Configuration is CORRECT', 'success');
+        log('✓ App should use PostgreSQL database', 'success');
+        log('✓ Next: Clear browser cache and reload (Ctrl+Shift+R)', 'success');
+      } else if (!viteEnv.VITE_USE_API || viteEnv.VITE_USE_API === 'undefined') {
+        log('✗ VITE_USE_API is not set in build!', 'error');
+        log('  This means Vercel did not include the env vars', 'error');
+        log('  Solution: Redeploy after env vars are set', 'error');
+      } else if (!viteEnv.VITE_TEAM_ID) {
+        log('✗ VITE_TEAM_ID is not set!', 'error');
+        log('  Add this in Vercel dashboard', 'error');
+      } else {
+        log('⚠ Configuration partially correct', 'warning');
+        log('  Check individual variables above', 'warning');
+      }
+
+      log('\n═══════════════════════════════════════════════');
+      log('BUILD INFO');
+      log('═══════════════════════════════════════════════\n');
+      log(`Mode: ${viteEnv.MODE}`);
+      log(`Base URL: ${viteEnv.BASE_URL}`);
+      log(`Prod: ${viteEnv.PROD}`);
+      log(`Dev: ${viteEnv.DEV}`);
+      log(`SSR: ${viteEnv.SSR}`);
+
+    }).catch(err => {
+      log('\n✗ ERROR loading environment config:', 'error');
+      log(err.toString(), 'error');
+    });
+  </script>
+</body>
+</html>
