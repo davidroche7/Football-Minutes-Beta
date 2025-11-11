@@ -96,5 +96,16 @@ for (const route of apiRoutes) {
   });
 }
 
-// Export for Vercel
-export default app;
+// Export as Vercel serverless function
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Convert Vercel request to Express request and handle
+  return new Promise<void>((resolve, reject) => {
+    app(req as any, res as any, (err?: any) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
