@@ -1,7 +1,5 @@
-# Exclude individual API handlers - only api/index.ts should be deployed
-api/*
-!api/index.ts
-!api/_lib/
+# Deploy all API handlers directly (Vercel will auto-detect them)
+# Exclude only tests and internal helpers
 
 # Exclude tests
 **/*.test.ts
