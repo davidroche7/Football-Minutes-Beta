@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   fetchAuditEvents,
-  formatAuditEventSummary,
   formatAuditEventChanges,
   type AuditEvent,
 } from '../lib/auditClient';
@@ -11,7 +10,7 @@ interface AuditLogViewProps {
   entityType?: string;
   entityId?: string;
   limit?: number;
-  showFilters?: boolean;
+  // showFilters?: boolean; // TODO: Implement filters in future iteration
   className?: string;
 }
 
@@ -23,7 +22,6 @@ export function AuditLogView({
   entityType,
   entityId,
   limit = 50,
-  showFilters = false,
   className = '',
 }: AuditLogViewProps) {
   const [events, setEvents] = useState<AuditEvent[]>([]);
