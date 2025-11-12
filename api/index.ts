@@ -3,21 +3,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from 'express';
 import cors from 'cors';
 
-// Import individual route handlers from api/routes (named exports)
-import { handler as healthHandler } from './routes/health';
-import { handler as csrfHandler } from './routes/session/csrf';
-import { handler as playersIndexHandler } from './routes/players/index';
-import { handler as playerByIdHandler } from './routes/players/[playerId]';
-import { handler as playerRestoreHandler } from './routes/players/[playerId]/restore';
-import { handler as fixturesIndexHandler } from './routes/fixtures/index';
-import { handler as fixtureByIdHandler } from './routes/fixtures/[fixtureId]';
-import { handler as fixtureLineupHandler } from './routes/fixtures/[fixtureId]/lineup';
-import { handler as fixtureLockHandler } from './routes/fixtures/[fixtureId]/lock';
-import { handler as fixtureResultHandler } from './routes/fixtures/[fixtureId]/result';
-import { handler as teamStatsHandler } from './routes/stats/team';
-import { handler as playerStatsHandler } from './routes/stats/players';
-import { handler as rulesetsActiveHandler } from './routes/rulesets/active';
-import { handler as auditIndexHandler } from './routes/audit/index';
+// Import individual route handlers from server/api-routes (named exports)
+import { handler as healthHandler } from '../server/api-routes/health';
+import { handler as csrfHandler } from '../server/api-routes/session/csrf';
+import { handler as playersIndexHandler } from '../server/api-routes/players/index';
+import { handler as playerByIdHandler } from '../server/api-routes/players/[playerId]';
+import { handler as playerRestoreHandler } from '../server/api-routes/players/[playerId]/restore';
+import { handler as fixturesIndexHandler } from '../server/api-routes/fixtures/index';
+import { handler as fixtureByIdHandler } from '../server/api-routes/fixtures/[fixtureId]';
+import { handler as fixtureLineupHandler } from '../server/api-routes/fixtures/[fixtureId]/lineup';
+import { handler as fixtureLockHandler } from '../server/api-routes/fixtures/[fixtureId]/lock';
+import { handler as fixtureResultHandler } from '../server/api-routes/fixtures/[fixtureId]/result';
+import { handler as teamStatsHandler } from '../server/api-routes/stats/team';
+import { handler as playerStatsHandler } from '../server/api-routes/stats/players';
+import { handler as rulesetsActiveHandler } from '../server/api-routes/rulesets/active';
+import { handler as auditIndexHandler } from '../server/api-routes/audit/index';
 
 const app = express();
 
