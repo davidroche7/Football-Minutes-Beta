@@ -3,21 +3,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from 'express';
 import cors from 'cors';
 
-// Import individual route handlers from server/api-routes
-import healthHandler from '../server/api-routes/health';
-import csrfHandler from '../server/api-routes/session/csrf';
-import playersIndexHandler from '../server/api-routes/players/index';
-import playerByIdHandler from '../server/api-routes/players/[playerId]';
-import playerRestoreHandler from '../server/api-routes/players/[playerId]/restore';
-import fixturesIndexHandler from '../server/api-routes/fixtures/index';
-import fixtureByIdHandler from '../server/api-routes/fixtures/[fixtureId]';
-import fixtureLineupHandler from '../server/api-routes/fixtures/[fixtureId]/lineup';
-import fixtureLockHandler from '../server/api-routes/fixtures/[fixtureId]/lock';
-import fixtureResultHandler from '../server/api-routes/fixtures/[fixtureId]/result';
-import teamStatsHandler from '../server/api-routes/stats/team';
-import playerStatsHandler from '../server/api-routes/stats/players';
-import rulesetsActiveHandler from '../server/api-routes/rulesets/active';
-import auditIndexHandler from '../server/api-routes/audit/index';
+// Import individual route handlers from api/routes
+import healthHandler from './routes/health';
+import csrfHandler from './routes/session/csrf';
+import playersIndexHandler from './routes/players/index';
+import playerByIdHandler from './routes/players/[playerId]';
+import playerRestoreHandler from './routes/players/[playerId]/restore';
+import fixturesIndexHandler from './routes/fixtures/index';
+import fixtureByIdHandler from './routes/fixtures/[fixtureId]';
+import fixtureLineupHandler from './routes/fixtures/[fixtureId]/lineup';
+import fixtureLockHandler from './routes/fixtures/[fixtureId]/lock';
+import fixtureResultHandler from './routes/fixtures/[fixtureId]/result';
+import teamStatsHandler from './routes/stats/team';
+import playerStatsHandler from './routes/stats/players';
+import rulesetsActiveHandler from './routes/rulesets/active';
+import auditIndexHandler from './routes/audit/index';
 
 const app = express();
 

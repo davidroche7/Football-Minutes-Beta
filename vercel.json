@@ -2,8 +2,7 @@
   "buildCommand": "npm run build:frontend",
   "functions": {
     "api/index.ts": {
-      "runtime": "@vercel/node@5.5.4",
-      "includeFiles": "server/**"
+      "runtime": "@vercel/node@5.5.4"
     }
   },
   "rewrites": [
