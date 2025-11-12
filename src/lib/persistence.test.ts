@@ -1,6 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { listMatches, saveMatch, updateMatch } from './persistence';
 import { CONFIG } from '../config/constants';
+
+// Mock environment to force localStorage mode for these tests
+vi.mock('../config/environment', () => ({
+  USE_API_PERSISTENCE: false,
+  API_BASE_URL: '/api',
+  TEAM_ID: 'test-team',
+  SESSION_SECRET: 'test-secret',
+}));
 
 const sampleAllocation = {
   quarters: Array.from({ length: CONFIG.QUARTERS }, (_, quarterIndex) => ({
