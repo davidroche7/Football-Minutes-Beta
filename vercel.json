@@ -1,3 +1,8 @@
 {
-  "buildCommand": "npm run build:frontend"
+  "buildCommand": "npm run build:frontend",
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "server/**"
+    }
+  }
 }
