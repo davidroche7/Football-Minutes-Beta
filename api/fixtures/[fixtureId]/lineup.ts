@@ -6,7 +6,7 @@ import { ApiError, handleError } from '../../_lib/errors';
 import { readJsonBody } from '../../_lib/json';
 import { ok } from '../../_lib/responses';
 import { parseWithSchema } from '../../_lib/validation';
-import { replaceFixtureLineup } from '../../services/fixtures';
+import { replaceFixtureLineup } from '../../../server/services/fixtures';
 
 const lineupSchema = z.object({
   slots: z

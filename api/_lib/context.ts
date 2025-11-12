@@ -1,6 +1,6 @@
 /* eslint-env node */
 import type { VercelRequest } from '@vercel/node';
-import type { UserRole } from '../server/db/types';
+import type { UserRole } from '../../server/db/types';
 
 export interface RequestContext {
   actorId: string | null;

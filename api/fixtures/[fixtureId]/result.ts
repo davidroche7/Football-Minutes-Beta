@@ -6,7 +6,7 @@ import { ApiError, handleError } from '../../_lib/errors';
 import { readJsonBody } from '../../_lib/json';
 import { ok } from '../../_lib/responses';
 import { parseWithSchema } from '../../_lib/validation';
-import { setFixtureResult } from '../../services/fixtures';
+import { setFixtureResult } from '../../../server/services/fixtures';
 
 const resultSchema = z.object({
   resultCode: z.enum(['WIN', 'DRAW', 'LOSS', 'ABANDONED', 'VOID']),

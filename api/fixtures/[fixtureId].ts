@@ -6,7 +6,7 @@ import { ApiError, handleError } from '../_lib/errors';
 import { readJsonBody } from '../_lib/json';
 import { ok } from '../_lib/responses';
 import { parseWithSchema } from '../_lib/validation';
-import { getFixtureDetail, updateFixtureMetadata } from '../server/services/fixtures';
+import { getFixtureDetail, updateFixtureMetadata } from '../../server/services/fixtures';
 
 const updateFixtureSchema = z
   .object({

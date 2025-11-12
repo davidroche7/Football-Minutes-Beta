@@ -11,7 +11,7 @@ import {
   softDeletePlayer,
   updatePlayer,
   type UpdatePlayerInput,
-} from '../server/services/players';
+} from '../../server/services/players';
 
 const updatePlayerSchema = z
   .object({

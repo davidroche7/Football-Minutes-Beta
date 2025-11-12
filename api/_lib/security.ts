@@ -1,7 +1,7 @@
 /* eslint-env node */
 import type { VercelRequest } from '@vercel/node';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { UserRole } from '../server/db/types';
+import type { UserRole } from '../../server/db/types';
 import { resolveContext } from './context';
 import { ApiError } from './errors';
 
