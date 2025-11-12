@@ -1,8 +1,3 @@
-# Exclude tests
+# Exclude tests only
 **/*.test.ts
 **/*.spec.ts
-
-# Exclude individual API handlers (consolidated into api/index.ts)
-api/**/*
-!api/index.ts
-!api/_lib
