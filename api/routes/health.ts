@@ -2,7 +2,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql } from '@vercel/postgres';
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export async function handler(_req: VercelRequest, res: VercelResponse) {
   let dbStatus: 'connected' | 'skipped' | 'error' = 'skipped';
 
   if (

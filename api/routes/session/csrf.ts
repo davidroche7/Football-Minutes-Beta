@@ -4,7 +4,7 @@ import { issueCsrfToken, enforceSecurity } from '../_lib/security';
 import { ApiError, handleError } from '../_lib/errors';
 import { ok } from '../_lib/responses';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'GET') {
       throw new ApiError(405, 'METHOD_NOT_ALLOWED', `Unsupported method: ${req.method}`);

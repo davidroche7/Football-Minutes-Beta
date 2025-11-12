@@ -25,7 +25,7 @@ const updatePlayerSchema = z
     message: 'At least one field must be provided.',
   });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const isMutation = req.method !== 'GET';
     const security = enforceSecurity(req, {

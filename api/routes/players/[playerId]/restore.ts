@@ -5,7 +5,7 @@ import { ApiError, handleError } from '../../_lib/errors';
 import { ok } from '../../_lib/responses';
 import { restorePlayer } from '../../../server/services/players';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'POST') {
       throw new ApiError(405, 'METHOD_NOT_ALLOWED', `Unsupported method: ${req.method}`);

@@ -5,7 +5,7 @@ import { ApiError, handleError } from '../_lib/errors';
 import { ok } from '../_lib/responses';
 import { getActiveRuleset } from '../../server/services/rulesets';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'GET') {
       throw new ApiError(405, 'METHOD_NOT_ALLOWED', `Unsupported method: ${req.method}`);

@@ -1,6 +1,3 @@
 # Exclude tests
 **/*.test.ts
 **/*.spec.ts
-
-# Exclude routes subdirectory from function auto-detection
-api/routes/
