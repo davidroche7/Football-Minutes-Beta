@@ -1,9 +1,0 @@
-# Exclude tests only
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.ts
-
-# Exclude dev files
-.env
-.env.local
-*.log
