@@ -51,7 +51,7 @@ export function getPool(): Pool {
   return sharedPool;
 }
 
-export async function query<T = unknown>(text: string, params: unknown[] = []): Promise<QueryResult<T>> {
+export async function query<T extends Record<string, any> = any>(text: string, params: unknown[] = []): Promise<QueryResult<T>> {
   return getPool().query<T>(text, params as any[]);
 }
 
