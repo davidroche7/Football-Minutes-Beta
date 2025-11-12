@@ -10,7 +10,7 @@ import { Tabs } from './components/Tabs';
 import { SeasonStatsView } from './components/SeasonStatsView';
 import { RulesEngineView } from './components/RulesEngineView';
 import { LoginForm } from './components/LoginForm';
-import { allocate, updateSlot, swapPositions, swapWithSub } from './lib/allocator';
+import { allocate, updateSlot, updateSlotProperties, swapPositions, swapWithSub } from './lib/allocator';
 import {
   listMatches,
   saveMatch,
@@ -282,6 +282,22 @@ function App() {
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update slot');
+    }
+  };
+
+  const handleSaveSlotProperties = (
+    quarter: Quarter,
+    slotIndex: number,
+    updates: Partial<Pick<PlayerSlot, 'wave'>>
+  ) => {
+    if (!allocation) return;
+
+    try {
+      const updatedAllocation = updateSlotProperties(allocation, quarter, slotIndex, updates);
+      setAllocation(updatedAllocation);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update slot properties');
     }
   };
 
@@ -844,6 +860,7 @@ function App() {
               slotIndex={editingSlotIndex}
               availablePlayers={players}
               onSave={handleSaveEdit}
+              onSaveProperties={handleSaveSlotProperties}
             />
 
             {players.length === 0 && (

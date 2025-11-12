@@ -46,7 +46,7 @@ export interface MatchRecord extends SaveMatchPayload {
   id: string;
   createdAt: string;
   lastModifiedAt: string;
-  editHistory: MatchEditEvent[];
+  editHistory?: MatchEditEvent[]; // Optional - lazy loaded from audit API or stored in localStorage
   metadata?: {
     playerIdLookup?: Record<string, string>;
     venueType?: string | null;

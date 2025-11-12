@@ -782,3 +782,58 @@ export function updateSlot(
     summary,
   };
 }
+
+/**
+ * Update a slot's properties (wave, position, minutes)
+ */
+export function updateSlotProperties(
+  allocation: Allocation,
+  quarter: Quarter,
+  slotIndex: number,
+  updates: Partial<Pick<PlayerSlot, 'wave' | 'position' | 'minutes'>>
+): Allocation {
+  // Clone the allocation
+  const newQuarters = allocation.quarters.map((q) => ({
+    ...q,
+    slots: [...q.slots],
+  }));
+
+  // Find the quarter
+  const quarterAllocation = newQuarters.find((q) => q.quarter === quarter);
+  if (!quarterAllocation) {
+    throw new Error(`Quarter ${quarter} not found`);
+  }
+
+  if (slotIndex < 0 || slotIndex >= quarterAllocation.slots.length) {
+    throw new Error(`Invalid slot index ${slotIndex}`);
+  }
+
+  // Update the slot with new properties
+  const currentSlot = quarterAllocation.slots[slotIndex];
+  if (!currentSlot) {
+    throw new Error(`Slot not found at index ${slotIndex}`);
+  }
+
+  quarterAllocation.slots[slotIndex] = {
+    ...currentSlot,
+    ...updates,
+  };
+
+  // Recalculate summary
+  const summary: Record<string, number> = {};
+
+  newQuarters.forEach((q) => {
+    q.slots.forEach((slot) => {
+      const playerName = slot.player;
+      if (!summary[playerName]) {
+        summary[playerName] = 0;
+      }
+      summary[playerName]! += slot.minutes;
+    });
+  });
+
+  return {
+    quarters: newQuarters,
+    summary,
+  };
+}

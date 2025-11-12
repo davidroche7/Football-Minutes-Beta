@@ -1161,7 +1161,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                         </p>
                       </div>
 
-                      {match.editHistory.length > 0 && (
+                      {match.editHistory && match.editHistory.length > 0 && (
                         <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                           <p className="mb-2 font-medium text-gray-700 dark:text-gray-200">Change Log</p>
                           <ul className="space-y-1">
@@ -1170,7 +1170,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                                 <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
                                   {event.editedAt}
                                 </span>{' '}
-                                {event.editedBy} changed {event.field} from “{event.previousValue || '—'}” to “{event.newValue || '—'}”
+                                {event.editedBy} changed {event.field} from "{event.previousValue || '—'}" to "{event.newValue || '—'}"
                               </li>
                             ))}
                           </ul>

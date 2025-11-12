@@ -1,4 +1,5 @@
-import type { Quarter, PlayerSlot } from '../lib/types';
+import { useState, useEffect } from 'react';
+import type { Quarter, PlayerSlot, Wave } from '../lib/types';
 
 interface EditModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface EditModalProps {
   slotIndex: number | null;
   availablePlayers: string[];
   onSave: (quarter: Quarter, slotIndex: number, newPlayer: string) => void;
+  onSaveProperties?: (quarter: Quarter, slotIndex: number, updates: Partial<Pick<PlayerSlot, 'wave'>>) => void;
 }
 
 /**
@@ -21,7 +23,14 @@ export function EditModal({
   slotIndex,
   availablePlayers,
   onSave,
+  onSaveProperties,
 }: EditModalProps) {
+  const [selectedWave, setSelectedWave] = useState<Wave | undefined>(slot?.wave);
+
+  useEffect(() => {
+    setSelectedWave(slot?.wave);
+  }, [slot]);
+
   if (!isOpen || !slot || quarter === null || slotIndex === null) {
     return null;
   }
@@ -29,6 +38,13 @@ export function EditModal({
   const handlePlayerSelect = (newPlayer: string) => {
     onSave(quarter, slotIndex, newPlayer);
     onClose();
+  };
+
+  const handleWaveChange = (wave: Wave | undefined) => {
+    setSelectedWave(wave);
+    if (onSaveProperties) {
+      onSaveProperties(quarter, slotIndex, { wave });
+    }
   };
 
   return (
@@ -42,12 +58,43 @@ export function EditModal({
           <p className="text-sm text-gray-600 dark:text-gray-400">Quarter {quarter}</p>
           <p className="text-lg font-semibold text-gray-900 dark:text-white">
             {slot.position} - {slot.minutes} minutes
-            {slot.wave && ` (${slot.wave} wave)`}
+            {selectedWave && ` (${selectedWave} wave)`}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Current: {slot.player}
           </p>
         </div>
+
+        {/* Wave selector for outfield players */}
+        {slot.position !== 'GK' && onSaveProperties && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Wave Assignment
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleWaveChange('first')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  selectedWave === 'first'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
+              >
+                First Wave (0-5 min)
+              </button>
+              <button
+                onClick={() => handleWaveChange('second')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  selectedWave === 'second'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
+              >
+                Second Wave (5-10 min)
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

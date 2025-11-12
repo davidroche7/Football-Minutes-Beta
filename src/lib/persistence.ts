@@ -323,7 +323,7 @@ async function updateMatchLocal(
   }
 
   match.lastModifiedAt = now;
-  match.editHistory = [...match.editHistory, ...editEvents];
+  match.editHistory = [...(match.editHistory || []), ...editEvents];
   matches[index] = match;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matches));
   return match;
@@ -622,7 +622,7 @@ const convertFixtureDetailToMatch = (detail: ApiFixtureDetail): MatchRecord => {
     result: matchResult,
     createdAt: detail.fixture.createdAt,
     lastModifiedAt: detail.fixture.updatedAt,
-    editHistory: [],
+    // editHistory is lazy-loaded via fetchFixtureAuditEvents when needed
     metadata: {
       playerIdLookup,
       venueType: detail.fixture.venueType,
