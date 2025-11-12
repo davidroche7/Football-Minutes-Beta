@@ -10,7 +10,7 @@ import {
   createPlayer,
   listPlayers,
   type CreatePlayerInput,
-} from '../../server/services/players';
+} from '../services/players';
 
 const createPlayerSchema = z.object({
   teamId: z.string().uuid(),

@@ -6,7 +6,7 @@ import { ApiError, handleError } from '../_lib/errors';
 import { readJsonBody } from '../_lib/json';
 import { ok, created } from '../_lib/responses';
 import { parseWithSchema } from '../_lib/validation';
-import { createFixture, listFixtures } from '../../server/services/fixtures';
+import { createFixture, listFixtures } from '../services/fixtures';
 import type { FixtureStatus } from '../../server/db/types';
 
 const createFixtureSchema = z.object({

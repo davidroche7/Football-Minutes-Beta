@@ -10,6 +10,7 @@
     "dev:backend": "tsx watch --env-file=.env server/dev-server.ts",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "tsc -b && vite build",
+    "build:api": "node scripts/build-api.mjs",
     "build:backend": "esbuild server/production-server.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:pg --external:@vercel/postgres --external:express --external:cors --external:dotenv",
     "start": "NODE_ENV=production node dist/server.js",
     "preview": "vite preview",

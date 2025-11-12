@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { enforceSecurity } from '../_lib/security';
 import { ApiError, handleError } from '../_lib/errors';
 import { ok } from '../_lib/responses';
-import { listAuditEvents } from '../../server/services/audit';
+import { listAuditEvents } from '../services/audit';
 
 export async function handler(req: VercelRequest, res: VercelResponse) {
   try {

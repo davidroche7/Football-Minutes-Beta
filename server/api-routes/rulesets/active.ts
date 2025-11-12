@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { enforceSecurity } from '../_lib/security';
 import { ApiError, handleError } from '../_lib/errors';
 import { ok } from '../_lib/responses';
-import { getActiveRuleset } from '../../server/services/rulesets';
+import { getActiveRuleset } from '../services/rulesets';
 
 export async function handler(req: VercelRequest, res: VercelResponse) {
   try {
