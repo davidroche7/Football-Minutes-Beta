@@ -1,9 +1,9 @@
 /* eslint-env node */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { enforceSecurity } from '../_lib/security';
-import { ApiError, handleError } from '../_lib/errors';
-import { ok } from '../_lib/responses';
-import { getTeamSeasonSummary } from '../../server/services/stats';
+import { enforceSecurity } from './_lib/security';
+import { ApiError, handleError } from './_lib/errors';
+import { ok } from './_lib/responses';
+import { getTeamSeasonSummary, getPlayerSeasonSummary } from '../server/services/stats';
 
 export default async function(req: VercelRequest, res: VercelResponse) {
   try {
@@ -16,6 +16,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       requireCsrf: false,
       allowedRoles: ['coach', 'analyst', 'viewer', 'admin'],
     });
+
     const teamId =
       (typeof req.query.teamId === 'string' && req.query.teamId) || security.teamIdHeader;
     if (!teamId) {
@@ -23,6 +24,16 @@ export default async function(req: VercelRequest, res: VercelResponse) {
     }
 
     const seasonId = typeof req.query.seasonId === 'string' ? req.query.seasonId : undefined;
+    const type = req.query.type;
+
+    // /api/stats?type=players
+    if (type === 'players') {
+      const players = await getPlayerSeasonSummary(teamId, seasonId ?? undefined);
+      ok(res, { data: players });
+      return;
+    }
+
+    // /api/stats?type=team (default)
     const summary = await getTeamSeasonSummary(teamId, seasonId ?? undefined);
     ok(res, { data: summary });
   } catch (error) {

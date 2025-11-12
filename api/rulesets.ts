@@ -1,9 +1,9 @@
 /* eslint-env node */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { enforceSecurity } from '../_lib/security';
-import { ApiError, handleError } from '../_lib/errors';
-import { ok } from '../_lib/responses';
-import { getPlayerSeasonSummary } from '../../server/services/stats';
+import { enforceSecurity } from './_lib/security';
+import { ApiError, handleError } from './_lib/errors';
+import { ok } from './_lib/responses';
+import { getActiveRuleset } from '../server/services/rulesets';
 
 export default async function(req: VercelRequest, res: VercelResponse) {
   try {
@@ -22,9 +22,8 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       throw new ApiError(400, 'TEAM_ID_REQUIRED', 'teamId is required.');
     }
 
-    const seasonId = typeof req.query.seasonId === 'string' ? req.query.seasonId : undefined;
-    const players = await getPlayerSeasonSummary(teamId, seasonId ?? undefined);
-    ok(res, { data: players });
+    const ruleset = await getActiveRuleset(teamId);
+    ok(res, { data: ruleset });
   } catch (error) {
     handleError(res, error);
   }
