@@ -1,8 +1,6 @@
 /* eslint-env node */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from './_lib/prisma';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -90,7 +88,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error('Players API error:', error);
     return res.status(500).json({ error: 'Internal server error' });
-  } finally {
-    await prisma.$disconnect();
   }
 }

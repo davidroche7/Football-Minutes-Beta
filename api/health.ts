@@ -1,8 +1,6 @@
 /* eslint-env node */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from './_lib/prisma';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -21,7 +19,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       timestamp: new Date().toISOString(),
       database: 'disconnected',
     });
-  } finally {
-    await prisma.$disconnect();
   }
 }
