@@ -237,3 +237,4 @@ MIT - see [LICENSE](./LICENSE) file for details
 - [Security Guide](./docs/security.md) - Authentication and security model
 - [Data Model](./docs/data-model-v2.md) - Database schema and relationships
 # Trigger rebuild with correct env vars
+
