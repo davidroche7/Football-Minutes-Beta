@@ -1,5 +1,1 @@
-# Only exclude test files - include everything else
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.ts
-__tests__/
+api/*.mjs
