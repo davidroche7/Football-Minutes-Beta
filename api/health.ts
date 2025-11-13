@@ -1,28 +1,27 @@
 /* eslint-env node */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql } from '@vercel/postgres';
+import { PrismaClient } from '@prisma/client';
 
-export default async function(_req: VercelRequest, res: VercelResponse) {
-  let dbStatus: 'connected' | 'skipped' | 'error' = 'skipped';
+const prisma = new PrismaClient();
 
-  if (
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.POSTGRES_URL_NON_POOLING
-  ) {
-    try {
-      await sql`SELECT 1`;
-      dbStatus = 'connected';
-    } catch (error) {
-      console.error('health-check: database ping failed', error);
-      dbStatus = 'error';
-    }
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+
+    return res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+    });
+  } finally {
+    await prisma.$disconnect();
   }
-
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    database: dbStatus,
-  });
 }

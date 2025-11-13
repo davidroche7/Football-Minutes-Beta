@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id              String    @id @default(cuid())
+  name            String
+  ageGroup        String?
+  notes           String?
+  quarterDuration Int       @default(10)
+  quarters        Int       @default(4)
+  waveFirst       Int       @default(5)
+  waveSecond      Int       @default(5)
+  maxVariance     Int       @default(5)
+  gkRequiresOutfield Boolean @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  players         Player[]
+  matches         Match[]
+  activityLogs    ActivityLog[] @relation("TeamLogs")
+}
+
+model Player {
+  id                 String        @id @default(cuid())
+  teamId             String
+  team               Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  displayName        String
+  squadNumber        Int?
+  status             String        @default("ACTIVE")
+  preferredPositions String?
+  notes              String?
+  removedAt          DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  appearances        Appearance[]
+
+  @@index([teamId])
+  @@unique([teamId, displayName])
+}
+
+model Match {
+  id             String        @id @default(cuid())
+  teamId         String
+  team           Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  opponent       String
+  fixtureDate    DateTime
+  location       String        @default("HOME")
+  durationMinutes Int          @default(40)
+  status         String        @default("PLANNED")
+  notes          String?
+  goalsFor       Int?
+  goalsAgainst   Int?
+  result         String?
+  allocation     String?
+  gkPlan         String?
+  scorers        String?
+  assists        String?
+  honorableMentions String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  appearances    Appearance[]
+  activityLogs   ActivityLog[] @relation("MatchLogs")
+
+  @@index([teamId, fixtureDate])
+}
+
+model Appearance {
+  id            String    @id @default(cuid())
+  matchId       String
+  playerId      String
+  match         Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  minutesPlayed Int       @default(0)
+  started       Boolean   @default(false)
+  position      String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([matchId, playerId])
+  @@index([matchId])
+  @@index([playerId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  teamId    String
+  matchId   String?
+  type      String
+  message   String
+  payload   String?
+  createdAt DateTime @default(now())
+  actor     String?
+
+  team  Team   @relation("TeamLogs", fields: [teamId], references: [id], onDelete: Cascade)
+  match Match? @relation("MatchLogs", fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@index([matchId])
+}
