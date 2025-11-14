@@ -1,18 +1,19 @@
 # Football Minutes
 
-> Comprehensive team management tool for tracking your football season - lineups, stats, and fair playing time distribution.
+> Multi-user team management platform for tracking your football season - lineups, stats, and fair playing time distribution.
 
-A full-stack TypeScript application for managing football team rosters, generating fair playing time allocations, tracking match results, analyzing season statistics, and maintaining complete season records.
+A full-stack TypeScript application with **PostgreSQL persistence** for managing football team rosters, generating fair playing time allocations, tracking match results, analyzing season statistics, and maintaining complete season records.
 
 ## ✨ Features
 
+- **Multi-User**: PostgreSQL-backed persistence - works across browsers and users
 - **Smart Allocation**: Automatic fair distribution of playing minutes across 4 quarters
 - **Flexible Rosters**: Support for 5-15 players with GK rotation and mandatory outfield time
 - **Interactive Editor**: Drag/drop quarter editor with real-time validation
 - **Match Management**: Complete flow for recording matches, scores, awards, and lineups
 - **Season Analytics**: Player stats, minutes tracking, goals, awards, and audit history
 - **Data Import**: Import historical data from Excel spreadsheets
-- **Secure Auth**: Session-based authentication with CSRF protection
+- **Secure Auth**: Session-based authentication with CSRF protection (TODO)
 - **Rules Engine**: Configurable fairness rules and timing constraints
 
 ## 🚀 Quick Start
@@ -61,19 +62,21 @@ Two accounts are pre-configured:
 ## 🏗️ Architecture
 
 ```
-Frontend (Vite + React)       Backend (Express + Vercel Functions)
-     :3000                              :3001
+Frontend (Vite + React)       Backend (Express API)
+     :3000                         :3001
 ┌──────────────┐              ┌────────────────────────┐
-│              │──── /api ────▶│  Express Dev Server    │
-│  React SPA   │   (proxy)     │  ├─ Health checks      │
-│  TypeScript  │               │  ├─ API routes         │
-│  Tailwind    │               │  └─ Vercel fn wrapper  │
-└──────────────┘              └────────────────────────┘
+│              │──── /api ────▶│  Express Server        │
+│  React SPA   │   (proxy)     │  ├─ Players CRUD       │
+│  TypeScript  │               │  ├─ Fixtures CRUD      │
+│  Tailwind    │               │  ├─ Stats endpoints    │
+└──────────────┘              │  ├─ Rules/Audit        │
+                              │  └─ Health checks      │
+                              └────────────────────────┘
                                         │
                                         ▼
                               ┌────────────────────────┐
                               │  PostgreSQL Database   │
-                              │  (Docker / Cloud)      │
+                              │  (Neon / Railway)      │
                               └────────────────────────┘
 ```
 
@@ -87,16 +90,15 @@ Frontend (Vite + React)       Backend (Express + Vercel Functions)
 
 **Backend**
 - Node.js 20 + TypeScript
-- Express.js (dev + production)
-- Vercel Serverless Functions (production option)
-- PostgreSQL + pg driver
+- Express.js (unified dev + production server)
+- PostgreSQL + pg driver (raw SQL, ~1200 LOC service layer)
 - Zod (validation)
 
-**DevOps**
+**Deployment**
+- Railway (recommended - built-in PostgreSQL)
+- Heroku (via Procfile)
 - Docker support
-- Railway/Heroku ready
-- Vercel deployment
-- GitHub Actions ready
+- Any Node.js hosting platform
 
 ## 🧪 Testing & Quality
 
@@ -182,19 +184,29 @@ For detailed environment setup, see the [Development Guide](./docs/DEVELOPMENT.m
 
 ## 🚢 Deployment
 
-See the **[Deployment Guide](./docs/DEPLOYMENT.md)** for platform-specific instructions:
+### Railway (Recommended)
 
-- **Vercel** - Zero-config serverless deployment
-- **Railway** - One-click deploy with PostgreSQL
-- **Heroku** - Traditional PaaS deployment
-- **Docker** - Container-based deployment
-- **VPS** - Self-hosted with PM2 and Nginx
+Railway provides managed PostgreSQL and auto-deploys from GitHub:
 
-Quick deploy to Vercel:
+1. **Create Railway account** at [railway.app](https://railway.app)
+2. **New Project** → Deploy from GitHub repo
+3. **Add PostgreSQL** database to project
+4. **Set environment variables**:
+   - `DATABASE_URL` (auto-populated by Railway)
+   - `PORT` (auto-populated)
+   - `NODE_ENV=production`
+   - `VITE_TEAM_ID` (get from database after migration)
+   - `VITE_USE_API=true`
+5. **Run migrations**: Railway console → `node scripts/db/migrate.cjs`
+6. **Create team**: `node scripts/seed-team.cjs` → copy team UUID
+7. **Update** `VITE_TEAM_ID` with team UUID
+8. **Deploy**: Commits to `main` branch auto-deploy
 
-```bash
-vercel --prod
-```
+### Other Platforms
+
+- **Heroku**: Uses `Procfile`, add PostgreSQL addon
+- **Docker**: See Dockerfile (TODO)
+- **VPS**: PM2 + Nginx (see [DEPLOYMENT.md](./docs/DEPLOYMENT.md))
 
 ## 📊 Data Import
 
