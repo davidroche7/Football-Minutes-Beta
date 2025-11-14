@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://football-minutes-dn0undefg-dave-roches-projects.vercel.app/api/:path*"
+      "destination": "https://football-minutes-d1ph8a722-dave-roches-projects.vercel.app/api/:path*"
     }
   ]
 }
