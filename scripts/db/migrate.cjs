@@ -10,6 +10,7 @@
  *   DATABASE_URL=postgres://... npm run db:migrate
  */
 
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
