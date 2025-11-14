@@ -1,9 +1,3 @@
 {
-  "buildCommand": "npm run build:frontend",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://football-minutes-d1ph8a722-dave-roches-projects.vercel.app/api/:path*"
-    }
-  ]
+  "buildCommand": "npm run build:frontend"
 }
