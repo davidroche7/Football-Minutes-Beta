@@ -10,7 +10,7 @@ import { config } from 'dotenv';
 config();
 
 const app = express();
-const PORT = process.env.API_PORT || process.env.PORT || 3001;
+const PORT = process.env.PORT || process.env.API_PORT || 3001;
 const isDev = process.env.NODE_ENV !== 'production';
 
 // Middleware
