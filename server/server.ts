@@ -74,9 +74,10 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 // Admin endpoints (TEMPORARY - for initial setup)
-import { runMigrations, seedTeam } from './routes/admin.js';
+import { runMigrations, seedTeam, seedRuleset } from './routes/admin.js';
 app.get('/admin/migrate', runMigrations);
 app.get('/admin/seed-team', seedTeam);
+app.get('/admin/seed-ruleset', seedRuleset);
 
 // CSRF token endpoint (placeholder)
 app.get('/api/session/csrf', (_req: Request, res: Response) => {

@@ -111,3 +111,73 @@ export async function seedTeam(req: Request, res: Response) {
     });
   }
 }
+
+export async function seedRuleset(req: Request, res: Response) {
+  const pool = getPool();
+
+  try {
+    // Get team ID
+    const teamResult = await pool.query(`SELECT id FROM team LIMIT 1`);
+    if (teamResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No team found. Run /admin/seed-team first.'
+      });
+    }
+    const teamId = teamResult.rows[0].id;
+
+    // Check if ruleset exists
+    const existing = await pool.query(
+      `SELECT id, name, is_active FROM ruleset WHERE team_id = $1 AND is_active = TRUE LIMIT 1`,
+      [teamId]
+    );
+
+    if (existing.rows.length > 0) {
+      const ruleset = existing.rows[0];
+      return res.json({
+        success: true,
+        ruleset: {
+          id: ruleset.id,
+          name: ruleset.name,
+          isActive: ruleset.is_active
+        },
+        message: `Active ruleset already exists with ID: ${ruleset.id}`,
+        alreadyExists: true
+      });
+    }
+
+    // Create default ruleset
+    const defaultConfig = {
+      quarters: 4,
+      quarterDuration: 10,
+      waves: { first: 5, second: 5 },
+      positions: { GK: 1, DEF: 2, ATT: 2 },
+      fairness: { maxVariance: 5, gkRequiresOutfield: true }
+    };
+
+    const result = await pool.query(`
+      INSERT INTO ruleset (team_id, name, config_json, is_active)
+      VALUES ($1, 'Default Rules', $2, TRUE)
+      RETURNING id, name, is_active
+    `, [teamId, JSON.stringify(defaultConfig)]);
+
+    const ruleset = result.rows[0];
+
+    res.json({
+      success: true,
+      ruleset: {
+        id: ruleset.id,
+        name: ruleset.name,
+        isActive: ruleset.is_active
+      },
+      message: `Ruleset created with ID: ${ruleset.id}`,
+      alreadyExists: false
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+}
