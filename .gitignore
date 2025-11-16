@@ -35,3 +35,4 @@ api/*.mjs.map
 .env*.local
 dist-vite/
 dist/
+# Trigger rebuild with env vars
