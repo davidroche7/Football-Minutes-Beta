@@ -370,9 +370,10 @@ async function getRosterAuditApi(teamIdOverride?: string): Promise<RosterAuditEn
     return [];
   }
   try {
-    const response = await apiRequest<{ data: RosterAuditEntry[] }>('/players/audit', {
+    const response = await apiRequest<{ data: RosterAuditEntry[] }>('/audit', {
       query: {
         teamId,
+        entityType: 'player',
       },
     });
     return Array.isArray(response?.data) ? response.data : [];

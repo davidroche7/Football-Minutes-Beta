@@ -1,4 +1,4 @@
-import { API_BASE_URL, TEAM_ID } from '../config/environment';
+import { TEAM_ID } from '../config/environment';
 import { apiRequest } from './apiClient';
 import type { RuleConfig } from '../config/rules';
 
@@ -23,7 +23,7 @@ export async function fetchActiveRuleset(teamIdOverride?: string): Promise<Rules
     throw new Error('TEAM_ID environment variable is required to fetch ruleset.');
   }
 
-  const response = await apiRequest<{ data: RulesetResponse | null }>(`${API_BASE_URL}/rulesets/active`, {
+  const response = await apiRequest<{ data: RulesetResponse | null }>('/rulesets/active', {
     query: { teamId },
   });
   return response?.data ?? null;
