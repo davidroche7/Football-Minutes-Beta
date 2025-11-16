@@ -73,6 +73,10 @@ app.get('/', (_req: Request, res: Response) => {
   res.status(200).send('Football Minutes API - Server is running');
 });
 
+// Runtime config endpoint
+import { getConfig } from './routes/config.js';
+app.get('/config.js', getConfig);
+
 // Admin endpoints (TEMPORARY - for initial setup)
 import { runMigrations, seedTeam, seedRuleset } from './routes/admin.js';
 app.get('/admin/migrate', runMigrations);
