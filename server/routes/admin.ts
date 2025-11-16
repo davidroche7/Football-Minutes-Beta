@@ -70,6 +70,22 @@ export async function seedTeam(req: Request, res: Response) {
   const pool = getPool();
 
   try {
+    // Check if team exists first
+    const existing = await pool.query(`SELECT id, name FROM team LIMIT 1`);
+
+    if (existing.rows.length > 0) {
+      const team = existing.rows[0];
+      return res.json({
+        success: true,
+        team: {
+          id: team.id,
+          name: team.name
+        },
+        message: `Team already exists with ID: ${team.id}`,
+        alreadyExists: true
+      });
+    }
+
     const result = await pool.query(`
       INSERT INTO team (name)
       VALUES ('Test Team')
@@ -84,7 +100,8 @@ export async function seedTeam(req: Request, res: Response) {
         id: team.id,
         name: team.name
       },
-      message: `Team created with ID: ${team.id}`
+      message: `Team created with ID: ${team.id}`,
+      alreadyExists: false
     });
   } catch (error: any) {
     res.status(500).json({
