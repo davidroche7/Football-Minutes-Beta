@@ -38,8 +38,8 @@ export async function runMigrations(req: Request, res: Response) {
       });
     }
 
-    // Read migration file
-    const migrationPath = path.join(__dirname, '../db/migrations/0001_init.sql');
+    // Read migration file - in production it's in dist/migrations
+    const migrationPath = path.join(__dirname, 'migrations/0001_init.sql');
     const sql = fs.readFileSync(migrationPath, 'utf8');
 
     // Run migration in transaction
