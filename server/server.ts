@@ -5,6 +5,11 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import { config } from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 config();
@@ -20,6 +25,12 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static frontend files in production
+if (!isDev) {
+  const frontendPath = path.join(__dirname, 'public');
+  app.use(express.static(frontendPath));
+}
 
 // Request logging
 if (isDev) {
@@ -355,15 +366,38 @@ app.get('/api/audit', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
+// SPA FALLBACK (Production only - serve index.html for client-side routes)
+// ============================================================================
+
+if (!isDev) {
+  // Catch-all route for SPA - must be last
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/') || req.path.startsWith('/admin/')) {
+      return next();
+    }
+    // For non-API routes, serve index.html (SPA routing)
+    if (!req.path.includes('.')) {
+      return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+    next();
+  });
+}
+
+// ============================================================================
 // ERROR HANDLERS
 // ============================================================================
 
-// 404 handler
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({
-    error: 'NOT_FOUND',
-    message: 'The requested endpoint does not exist',
-  });
+// 404 handler for API routes only
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/admin/')) {
+    res.status(404).json({
+      error: 'NOT_FOUND',
+      message: 'The requested endpoint does not exist',
+    });
+  } else {
+    next();
+  }
 });
 
 // Error handler

@@ -33,3 +33,5 @@ api/*.mjs.map
 .env.*.local
 .vercel
 .env*.local
+dist-vite/
+dist/
