@@ -62,6 +62,11 @@ app.get('/', (_req: Request, res: Response) => {
   res.status(200).send('Football Minutes API - Server is running');
 });
 
+// Admin endpoints (TEMPORARY - for initial setup)
+import { runMigrations, seedTeam } from './routes/admin.js';
+app.get('/admin/migrate', runMigrations);
+app.get('/admin/seed-team', seedTeam);
+
 // CSRF token endpoint (placeholder)
 app.get('/api/session/csrf', (_req: Request, res: Response) => {
   // TODO: Implement real CSRF token generation
