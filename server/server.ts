@@ -372,8 +372,10 @@ app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
 // START SERVER
 // ============================================================================
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 Football Minutes API server running on http://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`\n🚀 Football Minutes API server running on http://${HOST}:${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔧 Health check: http://localhost:${PORT}/api/health\n`);
+  console.log(`🔧 Health check: http://${HOST}:${PORT}/api/health\n`);
 });
