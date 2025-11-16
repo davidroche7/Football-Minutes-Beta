@@ -48,13 +48,18 @@ const getActorId = (req: Request): string | null => {
 // ROUTES
 // ============================================================================
 
-// Health check
+// Health check - simple, no database dependency
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
   });
+});
+
+// Root path health check (for Railway)
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).send('Football Minutes API - Server is running');
 });
 
 // CSRF token endpoint (placeholder)
