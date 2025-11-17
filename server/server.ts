@@ -26,12 +26,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static frontend files in production
-if (!isDev) {
-  const frontendPath = path.join(__dirname, 'public');
-  app.use(express.static(frontendPath));
-}
-
 // Request logging
 if (isDev) {
   app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -59,6 +53,10 @@ const getActorId = (req: Request): string | null => {
 // ROUTES
 // ============================================================================
 
+// Runtime config endpoint - MUST be before static file serving
+import { getConfig } from './routes/config.js';
+app.get('/config.js', getConfig);
+
 // Health check - simple, no database dependency
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({
@@ -73,9 +71,11 @@ app.get('/', (_req: Request, res: Response) => {
   res.status(200).send('Football Minutes API - Server is running');
 });
 
-// Runtime config endpoint
-import { getConfig } from './routes/config.js';
-app.get('/config.js', getConfig);
+// Serve static frontend files in production - MUST be after API routes
+if (!isDev) {
+  const frontendPath = path.join(__dirname, 'public');
+  app.use(express.static(frontendPath));
+}
 
 // Admin endpoints (TEMPORARY - for initial setup)
 import { runMigrations, seedTeam, seedRuleset, recalculateStats } from './routes/admin.js';
@@ -405,6 +405,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     next();
   }
 });
+
+// SPA fallback - serve index.html for all non-API routes in production
+if (!isDev) {
+  app.get('*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+}
 
 // Error handler
 app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
