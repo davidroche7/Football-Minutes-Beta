@@ -759,12 +759,26 @@ const listMatchesApi = async (teamIdOverride?: string): Promise<MatchRecord[]> =
     return [];
   }
 
-  const matches = await Promise.all(
+  // Use Promise.allSettled to continue even if individual fixtures fail
+  const results = await Promise.allSettled(
     summaries.map(async (summary) => {
       const detail = await fetchFixtureDetail(summary.id);
       return convertFixtureDetailToMatch(detail);
     })
   );
+
+  // Filter successful results, log failures
+  const matches: MatchRecord[] = [];
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      matches.push(result.value);
+    } else {
+      console.warn(
+        `Failed to load fixture ${summaries[index]?.id} (${summaries[index]?.opponent}):`,
+        result.reason
+      );
+    }
+  });
 
   return matches;
 };
