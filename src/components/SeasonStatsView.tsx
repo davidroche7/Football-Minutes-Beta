@@ -863,9 +863,43 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
               const isExpanded = expandedMatches.includes(match.id);
               const warnings = match.allocation.warnings ?? [];
               const draft = drafts[match.id];
+
+              // Show error UI for matches that failed draft creation
               if (!draft) {
-                return null;
+                return (
+                  <div
+                    key={match.id}
+                    className="rounded-lg border-2 border-red-300 bg-red-50 p-4 shadow-sm dark:border-red-800 dark:bg-red-900/20"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="text-red-600 dark:text-red-400 text-xl">⚠️</div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-red-800 dark:text-red-300">
+                          Error Loading Match Data
+                        </h3>
+                        <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                          vs {match.opponent} on {match.date}
+                        </p>
+                        <p className="mt-2 text-sm text-red-600 dark:text-red-300">
+                          This match is missing required lineup data. Check the browser console for details.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            onClick={() => console.log('Match data:', match)}
+                            className="rounded-md border border-red-400 bg-white px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
+                          >
+                            Show Debug Info
+                          </button>
+                          <span className="text-xs text-red-500 dark:text-red-400 font-mono">
+                            ID: {match.id}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
               }
+
               const feedback = matchFeedback[match.id];
               const isDirty = isDraftDirty(match, draft);
               const isSaving = savingMatchId === match.id;
