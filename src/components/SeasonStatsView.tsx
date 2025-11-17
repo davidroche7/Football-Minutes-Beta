@@ -192,29 +192,40 @@ const buildResultFromDraft = (draft: ResultDraft): MatchResult | null => {
   return result;
 };
 
-const createDraftFromMatch = (match: MatchRecord): MatchDraft => {
-  const allocation = cloneAllocation(match.allocation);
-  return {
-    date: match.date,
-    opponent: match.opponent,
-    result: {
-      venue: normaliseVenueOption(match.result?.venue),
-      outcome: normaliseOutcomeOption(match.result?.result),
-      goalsFor:
-        match.result?.goalsFor === null || match.result?.goalsFor === undefined
-          ? ''
-          : String(match.result.goalsFor),
-      goalsAgainst:
-        match.result?.goalsAgainst === null || match.result?.goalsAgainst === undefined
-          ? ''
-          : String(match.result.goalsAgainst),
-      playerOfMatch: match.result?.playerOfMatch ?? '',
-      honorableMentions: toListString(match.result?.honorableMentions),
-      scorers: toListString(match.result?.scorers),
-    },
-    allocation,
-    players: derivePlayersFromAllocation(allocation, match.players),
-  };
+const createDraftFromMatch = (match: MatchRecord): MatchDraft | null => {
+  try {
+    // Validate required data exists
+    if (!match || !match.allocation || !match.allocation.quarters) {
+      console.error('Invalid match data - missing allocation:', match?.id, match?.opponent);
+      return null;
+    }
+
+    const allocation = cloneAllocation(match.allocation);
+    return {
+      date: match.date,
+      opponent: match.opponent,
+      result: {
+        venue: normaliseVenueOption(match.result?.venue),
+        outcome: normaliseOutcomeOption(match.result?.result),
+        goalsFor:
+          match.result?.goalsFor === null || match.result?.goalsFor === undefined
+            ? ''
+            : String(match.result.goalsFor),
+        goalsAgainst:
+          match.result?.goalsAgainst === null || match.result?.goalsAgainst === undefined
+            ? ''
+            : String(match.result.goalsAgainst),
+        playerOfMatch: match.result?.playerOfMatch ?? '',
+        honorableMentions: toListString(match.result?.honorableMentions),
+        scorers: toListString(match.result?.scorers),
+      },
+      allocation,
+      players: derivePlayersFromAllocation(allocation, match.players || []),
+    };
+  } catch (error) {
+    console.error('Failed to create draft for match:', match?.id, match?.opponent, error);
+    return null;
+  }
 };
 
 const normaliseAllocationForSave = (allocation: Allocation): Allocation => {
@@ -376,7 +387,10 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   useEffect(() => {
     const nextDrafts: Record<string, MatchDraft> = {};
     matches.forEach((match) => {
-      nextDrafts[match.id] = createDraftFromMatch(match);
+      const draft = createDraftFromMatch(match);
+      if (draft) {
+        nextDrafts[match.id] = draft;
+      }
     });
     setDrafts(nextDrafts);
   }, [matches]);
@@ -589,7 +603,10 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   };
 
   const handleResetDraft = (match: MatchRecord) => {
-    setDrafts((prev) => ({ ...prev, [match.id]: createDraftFromMatch(match) }));
+    const draft = createDraftFromMatch(match);
+    if (draft) {
+      setDrafts((prev) => ({ ...prev, [match.id]: draft }));
+    }
     setMatchFeedback((prev) => ({ ...prev, [match.id]: {} }));
   };
 
@@ -621,7 +638,10 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         return;
       }
       await refreshMatchesFromSource();
-      setDrafts((prev) => ({ ...prev, [match.id]: createDraftFromMatch(updated) }));
+      const updatedDraft = createDraftFromMatch(updated);
+      if (updatedDraft) {
+        setDrafts((prev) => ({ ...prev, [match.id]: updatedDraft }));
+      }
       setMatchFeedback((prev) => ({
         ...prev,
         [match.id]: { status: 'Match updated.' },
