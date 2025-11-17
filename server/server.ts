@@ -66,11 +66,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
-// Root path health check (for Railway)
-app.get('/', (_req: Request, res: Response) => {
-  res.status(200).send('Football Minutes API - Server is running');
-});
-
 // Serve static frontend files in production - MUST be after API routes
 if (!isDev) {
   const frontendPath = path.join(__dirname, 'public');
