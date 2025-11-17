@@ -195,8 +195,8 @@ const buildResultFromDraft = (draft: ResultDraft): MatchResult | null => {
 const createDraftFromMatch = (match: MatchRecord): MatchDraft | null => {
   try {
     // Validate required data exists
-    if (!match || !match.allocation || !match.allocation.quarters) {
-      console.error('Invalid match data - missing allocation:', match?.id, match?.opponent);
+    if (!match || !match.allocation || !match.allocation.quarters || match.allocation.quarters.length === 0) {
+      console.error('Invalid match data - missing or empty allocation:', match?.id, match?.opponent);
       return null;
     }
 
