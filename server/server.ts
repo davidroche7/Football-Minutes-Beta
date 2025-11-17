@@ -407,8 +407,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // SPA fallback - serve index.html for all non-API routes in production
+// Use middleware instead of app.get('*') for Express 5 compatibility
 if (!isDev) {
-  app.get('*', (_req: Request, res: Response) => {
+  app.use((_req: Request, res: Response, _next: NextFunction) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
 }
