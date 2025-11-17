@@ -78,10 +78,11 @@ import { getConfig } from './routes/config.js';
 app.get('/config.js', getConfig);
 
 // Admin endpoints (TEMPORARY - for initial setup)
-import { runMigrations, seedTeam, seedRuleset } from './routes/admin.js';
+import { runMigrations, seedTeam, seedRuleset, recalculateStats } from './routes/admin.js';
 app.get('/admin/migrate', runMigrations);
 app.get('/admin/seed-team', seedTeam);
 app.get('/admin/seed-ruleset', seedRuleset);
+app.get('/admin/recalculate-stats', recalculateStats);
 
 // CSRF token endpoint (placeholder)
 app.get('/api/session/csrf', (_req: Request, res: Response) => {
@@ -421,10 +422,84 @@ app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
 // START SERVER
 // ============================================================================
 
+import { getPool } from './db/client.js';
+import fs from 'fs';
+
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
-  console.log(`\n🚀 Football Minutes API server running on http://${HOST}:${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔧 Health check: http://${HOST}:${PORT}/api/health\n`);
-});
+/**
+ * Run database migrations automatically on startup
+ */
+async function autoMigrate() {
+  const pool = getPool();
+
+  try {
+    console.log('🔄 Checking database migrations...');
+
+    // Create migrations table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL UNIQUE,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // Check if migration already applied
+    const existing = await pool.query(
+      `SELECT filename FROM schema_migrations WHERE filename = $1`,
+      ['0001_init.sql']
+    );
+
+    if (existing.rows.length > 0) {
+      console.log('✓ Database schema is up to date\n');
+      return;
+    }
+
+    // Read migration file - in production it's in dist/migrations
+    const migrationPath = path.join(__dirname, 'migrations/0001_init.sql');
+    if (!fs.existsSync(migrationPath)) {
+      throw new Error(`Migration file not found at ${migrationPath}`);
+    }
+
+    const sql = fs.readFileSync(migrationPath, 'utf8');
+
+    // Run migration in transaction
+    console.log('🔄 Applying migration 0001_init.sql...');
+    await pool.query('BEGIN');
+    await pool.query(sql);
+    await pool.query(
+      `INSERT INTO schema_migrations (filename) VALUES ($1)`,
+      ['0001_init.sql']
+    );
+    await pool.query('COMMIT');
+
+    console.log('✅ Database migration complete\n');
+  } catch (error: any) {
+    await pool.query('ROLLBACK').catch(() => {});
+    console.error('❌ Migration failed:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Start server with auto-migration
+ */
+async function startServer() {
+  try {
+    // Run migrations first
+    await autoMigrate();
+
+    // Then start Express server
+    app.listen(PORT, HOST, () => {
+      console.log(`🚀 Football Minutes API server running on http://${HOST}:${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔧 Health check: http://${HOST}:${PORT}/api/health\n`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

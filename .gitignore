@@ -29,10 +29,8 @@ api/*.mjs.map
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 .vercel
-.env*.local
 dist-vite/
 dist/
-# Trigger rebuild with env vars

@@ -12,6 +12,7 @@
     "build:frontend": "tsc -b && vite build",
     "build:backend": "esbuild server/server.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/server.js --external:pg --external:express --external:cors --external:dotenv && cp -r server/db/migrations dist/migrations && mkdir -p dist/public && cp -r dist-vite/* dist/public/",
     "start": "NODE_ENV=production node dist/server.js",
+    "db:migrate": "node scripts/migrate.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",

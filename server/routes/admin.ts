@@ -181,3 +181,37 @@ export async function seedRuleset(req: Request, res: Response) {
     });
   }
 }
+
+export async function recalculateStats(req: Request, res: Response) {
+  const pool = getPool();
+
+  try {
+    // Delete existing stats
+    await pool.query('DELETE FROM player_match_stat');
+
+    // Calculate and insert stats from lineup_quarter
+    const result = await pool.query(`
+      INSERT INTO player_match_stat (fixture_id, player_id, total_minutes, goalkeeper_quarters)
+      SELECT
+        lq.fixture_id,
+        lq.player_id,
+        SUM(lq.minutes) AS total_minutes,
+        COUNT(CASE WHEN lq.position = 'GK' THEN 1 END) AS goalkeeper_quarters
+      FROM lineup_quarter lq
+      GROUP BY lq.fixture_id, lq.player_id
+      RETURNING fixture_id, player_id, total_minutes, goalkeeper_quarters
+    `);
+
+    res.json({
+      success: true,
+      message: `Recalculated stats for ${result.rowCount} player-match combinations`,
+      rowCount: result.rowCount
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+}
