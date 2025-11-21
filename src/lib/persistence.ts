@@ -728,7 +728,7 @@ const saveMatchApi = async (payload: SaveMatchPayload): Promise<MatchRecord> => 
   const slots = convertAllocationToSlots(payload.allocation, playerIdMap);
   if (slots.length > 0) {
     await apiRequest(`/fixtures/${fixture.id}/lineup`, {
-      method: 'POST',
+      method: 'PUT',
       body: { slots },
       actorId: payload.createdBy ?? undefined,
     });
@@ -742,7 +742,7 @@ const saveMatchApi = async (payload: SaveMatchPayload): Promise<MatchRecord> => 
   if (hasResultDetails(payload.result)) {
     const resultPayload = buildResultPayload(payload.result!, playerIdMap);
     await apiRequest(`/fixtures/${fixture.id}/result`, {
-      method: 'POST',
+      method: 'PUT',
       body: resultPayload,
       actorId: payload.createdBy ?? undefined,
     });
