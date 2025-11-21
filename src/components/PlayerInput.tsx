@@ -120,6 +120,15 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
     const trimmed = playerName.trim();
     if (!trimmed || isSubmitting) return;
 
+    // Check for duplicate name before making API call
+    const existingPlayer = roster.find(
+      (p) => p.name.toLowerCase() === trimmed.toLowerCase() && p.removedAt === null
+    );
+    if (existingPlayer) {
+      setError(`Player "${trimmed}" already exists in squad`);
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setMessage(null);
