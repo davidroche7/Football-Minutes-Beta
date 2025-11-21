@@ -204,16 +204,31 @@ app.get('/api/fixtures', async (req: Request, res: Response) => {
 
 app.post('/api/fixtures', async (req: Request, res: Response) => {
   try {
+    console.log('[POST /api/fixtures] Received request');
+    console.log('  Body keys:', Object.keys(req.body));
+    console.log('  Body:', JSON.stringify(req.body, null, 2));
+
     const teamId = requireTeamId(req);
     const actorId = getActorId(req);
-    const fixture = await FixturesService.createFixture({
+    console.log('  teamId:', teamId);
+    console.log('  actorId:', actorId);
+
+    const input = {
       ...req.body,
       teamId,
       actorId,
-    });
+    };
+    console.log('  createFixture input:', JSON.stringify(input, null, 2));
+
+    const fixture = await FixturesService.createFixture(input);
+    console.log('[POST /api/fixtures] Success - created fixture:', fixture.id);
+    console.log('  Fixture summary:', JSON.stringify(fixture, null, 2));
+
     res.status(201).json({ data: fixture });
   } catch (error) {
-    console.error('POST /api/fixtures error:', error);
+    console.error('[POST /api/fixtures] ERROR:', error);
+    console.error('[POST /api/fixtures] Error message:', error instanceof Error ? error.message : 'Unknown');
+    console.error('[POST /api/fixtures] Error stack:', error instanceof Error ? error.stack : 'No stack');
     res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to create fixture' });
   }
 });

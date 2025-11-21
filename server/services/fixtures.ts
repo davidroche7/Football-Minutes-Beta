@@ -355,7 +355,17 @@ const ensurePlayerStat = (
 };
 
 export async function createFixture(input: CreateFixtureInput): Promise<FixtureSummaryDTO> {
+  console.log('[createFixture] Called with input:');
+  console.log('  teamId:', input.teamId);
+  console.log('  opponent:', input.opponent);
+  console.log('  fixtureDate:', input.fixtureDate);
+  console.log('  venueType:', input.venueType);
+  console.log('  squad.length:', input.squad?.length ?? 0);
+  console.log('  createdBy:', input.createdBy);
+
   return withTransaction(async (client) => {
+    console.log('[createFixture] Starting transaction');
+
     const insertFixture = await client.query<FixtureRow>(
       `INSERT INTO fixture (team_id, season_id, opponent, fixture_date, venue_type, kickoff_time, notes, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -373,8 +383,11 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
     );
 
     const fixture = insertFixture.rows[0]!;
+    console.log('[createFixture] INSERT successful - fixture ID:', fixture.id);
+    console.log('[createFixture] Fixture row:', JSON.stringify(fixture, null, 2));
 
     if (input.squad.length > 0) {
+      console.log(`[createFixture] Inserting ${input.squad.length} squad members`);
       const values: unknown[] = [];
       const placeholders: string[] = [];
       input.squad.forEach((player, index) => {
@@ -388,8 +401,10 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
          VALUES ${placeholders.join(', ')}`,
         values
       );
+      console.log('[createFixture] Squad members inserted');
     }
 
+    console.log('[createFixture] Recording audit event');
     await recordFixtureAudit(client, {
       actorId: input.createdBy ?? null,
       entityId: fixture.id,
@@ -398,6 +413,7 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
       nextState: fixture,
     });
 
+    console.log('[createFixture] Transaction complete, returning summary');
     return mapFixtureSummary(fixture, null);
   });
 }
