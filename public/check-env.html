@@ -13,39 +13,43 @@
 <body>
 <h1>🔍 Environment Variables Check</h1>
 <pre id="output">Loading...</pre>
+<script src="/config.js"></script>
 <script>
 const out = document.getElementById('output');
-const env = import.meta.env;
 
-const useApi = env.VITE_USE_API;
-const teamId = env.VITE_TEAM_ID;
-const apiUrl = env.VITE_API_BASE_URL;
-const secret = env.VITE_SESSION_SECRET;
-const roles = env.VITE_ACTOR_ROLES;
+// Wait for config.js to load
+setTimeout(() => {
+  const config = window.APP_CONFIG || {};
 
-const apiOk = useApi === 'true';
-const teamOk = !!teamId;
-const allOk = apiOk && teamOk;
+  const useApi = config.USE_API;
+  const teamId = config.TEAM_ID;
+  const apiUrl = config.API_BASE_URL;
+  const secret = config.SESSION_SECRET;
+  const roles = config.ACTOR_ROLES;
 
-out.innerHTML = `
-<span class="${apiOk ? 'good' : 'bad'}">${apiOk ? '✅' : '❌'} VITE_USE_API: ${useApi || 'NOT SET'}</span>
-<span class="${teamOk ? 'good' : 'bad'}">${teamOk ? '✅' : '❌'} VITE_TEAM_ID: ${teamId ? 'SET' : 'NOT SET'}</span>
-<span class="good">VITE_API_BASE_URL: ${apiUrl || 'NOT SET'}</span>
-<span class="${secret ? 'good' : 'bad'}">${secret ? '✅' : '❌'} VITE_SESSION_SECRET: ${secret ? 'SET' : 'NOT SET'}</span>
-<span class="good">VITE_ACTOR_ROLES: ${roles || 'NOT SET'}</span>
+  const apiOk = useApi === true;
+  const teamOk = !!teamId;
+  const allOk = apiOk && teamOk;
+
+  out.innerHTML = `
+<span class="${apiOk ? 'good' : 'bad'}">${apiOk ? '✅' : '❌'} USE_API: ${useApi !== undefined ? useApi : 'NOT SET'}</span>
+<span class="${teamOk ? 'good' : 'bad'}">${teamOk ? '✅' : '❌'} TEAM_ID: ${teamId || 'NOT SET'}</span>
+<span class="good">API_BASE_URL: ${apiUrl || 'NOT SET'}</span>
+<span class="${secret ? 'good' : 'bad'}">${secret ? '✅' : '❌'} SESSION_SECRET: ${secret ? 'SET (' + secret.substring(0,10) + '...)' : 'NOT SET'}</span>
+<span class="good">ACTOR_ROLES: ${roles ? roles.join(', ') : 'NOT SET'}</span>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Build Info:
-MODE: ${env.MODE}
-PROD: ${env.PROD}
+Runtime Config Source: window.APP_CONFIG
+Loaded from: /config.js endpoint
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <span class="${allOk ? 'good' : 'bad'}">
 ${allOk ? '✅✅✅ CONFIGURATION CORRECT!' : '❌ CONFIGURATION INCOMPLETE'}
-${allOk ? 'App should use API mode (PostgreSQL)' : 'App will use localStorage mode'}
-${allOk ? 'Action: Clear cache (Ctrl+Shift+R) and reload main app' : 'Action: Wait for new deployment (deploying now)'}
+${allOk ? 'App IS using API mode (PostgreSQL)' : 'App will use localStorage mode'}
+${allOk ? 'Action: App should be fully functional!' : 'Action: Check Railway environment variables'}
 </span>
 `;
+}, 100);
 </script>
 </body>
 </html>
