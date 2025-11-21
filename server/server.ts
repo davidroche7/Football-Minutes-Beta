@@ -234,17 +234,27 @@ app.get('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
 app.patch('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
   try {
     const actorId = getActorId(req);
+    console.log('[PATCH /api/fixtures/:fixtureId] Received request:');
+    console.log('  fixtureId:', req.params.fixtureId);
+    console.log('  actorId:', actorId);
+    console.log('  body keys:', Object.keys(req.body));
+    console.log('  body:', JSON.stringify(req.body, null, 2));
+
     const fixture = await FixturesService.updateFixtureMetadata(
       req.params.fixtureId,
       actorId,
       req.body
     );
     if (!fixture) {
+      console.log('[PATCH /api/fixtures/:fixtureId] Fixture not found');
       return res.status(404).json({ error: 'Fixture not found' });
     }
+    console.log('[PATCH /api/fixtures/:fixtureId] Success');
     res.json({ data: fixture });
   } catch (error) {
-    console.error('PATCH /api/fixtures/:fixtureId error:', error);
+    console.error('[PATCH /api/fixtures/:fixtureId] ERROR:', error);
+    console.error('[PATCH /api/fixtures/:fixtureId] Error message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('[PATCH /api/fixtures/:fixtureId] Error stack:', error instanceof Error ? error.stack : 'No stack');
     res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to update fixture' });
   }
 });

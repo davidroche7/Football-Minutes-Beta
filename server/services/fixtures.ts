@@ -407,35 +407,51 @@ export async function updateFixtureMetadata(
   actorId: string | null,
   updates: UpdateFixtureInput
 ): Promise<FixtureSummaryDTO | null> {
+  console.log('[updateFixtureMetadata] Called with:');
+  console.log('  fixtureId:', fixtureId);
+  console.log('  actorId:', actorId);
+  console.log('  updates keys:', Object.keys(updates));
+  console.log('  updates:', JSON.stringify(updates, null, 2));
+
   const fields: string[] = [];
   const params: unknown[] = [];
 
   if (typeof updates.opponent === 'string') {
+    console.log('[updateFixtureMetadata] Adding opponent field');
     fields.push(`opponent = $${params.length + 1}`);
     params.push(updates.opponent.trim());
   }
   if (typeof updates.fixtureDate === 'string') {
+    console.log('[updateFixtureMetadata] Adding fixtureDate field');
     fields.push(`fixture_date = $${params.length + 1}`);
     params.push(updates.fixtureDate);
   }
   if (typeof updates.venueType === 'string') {
+    console.log('[updateFixtureMetadata] Adding venueType field');
     fields.push(`venue_type = $${params.length + 1}`);
     params.push(updates.venueType);
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'kickoffTime')) {
+    console.log('[updateFixtureMetadata] Adding kickoffTime field');
     fields.push(`kickoff_time = $${params.length + 1}`);
     params.push(updates.kickoffTime ?? null);
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'notes')) {
+    console.log('[updateFixtureMetadata] Adding notes field');
     fields.push(`notes = $${params.length + 1}`);
     params.push(updates.notes ?? null);
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'seasonId')) {
+    console.log('[updateFixtureMetadata] Adding seasonId field');
     fields.push(`season_id = $${params.length + 1}`);
     params.push(updates.seasonId ?? null);
   }
 
+  console.log('[updateFixtureMetadata] Fields to update:', fields);
+  console.log('[updateFixtureMetadata] Params:', params);
+
   if (fields.length === 0) {
+    console.log('[updateFixtureMetadata] No fields to update, returning current fixture');
     const current = await getFixtureDetail(fixtureId);
     return current ? current.fixture : null;
   }
