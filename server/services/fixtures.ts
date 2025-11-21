@@ -175,7 +175,11 @@ export async function listFixtures(options: ListFixturesOptions): Promise<Fixtur
   }
 
   const sql = `
-    SELECT f.*, mr.*
+    SELECT
+      f.id, f.team_id, f.season_id, f.opponent, f.fixture_date,
+      f.venue_type, f.status, f.locked_at, f.finalised_at,
+      f.created_at, f.updated_at,
+      mr.result_code, mr.team_goals, mr.opponent_goals
     FROM fixture f
     JOIN team t ON t.id = f.team_id
     LEFT JOIN match_result mr ON mr.fixture_id = f.id
