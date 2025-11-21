@@ -18,11 +18,14 @@ const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 3001;
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true,
-}));
+// Middleware - CORS only needed in dev (frontend=localhost:3000, backend=localhost:3001)
+// In production, frontend and backend are same-origin, no CORS needed
+if (isDev) {
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true,
+  }));
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
