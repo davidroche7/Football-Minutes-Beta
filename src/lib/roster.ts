@@ -394,8 +394,10 @@ async function addPlayerApi(name: string, actor: string, teamIdOverride?: string
   }
   const response = await apiRequest<{ data: ApiPlayerResponse }>('/players', {
     method: 'POST',
-    body: {
+    query: {
       teamId,
+    },
+    body: {
       displayName: trimmedName,
     },
     actorId: actor,
