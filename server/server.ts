@@ -86,7 +86,7 @@ app.get('/admin/recalculate-stats', recalculateStats);
 app.get('/api/session/csrf', (_req: Request, res: Response) => {
   // TODO: Implement real CSRF token generation
   res.cookie('ffm_csrf', 'dev-token', {
-    httpOnly: true,
+    httpOnly: false,  // Must be false so frontend JS can read the token
     sameSite: 'lax',
     secure: !isDev
   });
