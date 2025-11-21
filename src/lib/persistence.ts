@@ -839,7 +839,7 @@ const updateMatchApi = async (
   if (updates.allocation) {
     const slots = convertAllocationToSlots(updates.allocation, playerIdMap);
     await apiRequest(`/fixtures/${matchId}/lineup`, {
-      method: 'POST',
+      method: 'PUT',
       body: { slots },
       actorId: updates.editor,
     });
@@ -849,13 +849,13 @@ const updateMatchApi = async (
     if (updates.result && hasResultDetails(updates.result)) {
       const payload = buildResultPayload(updates.result, playerIdMap);
       await apiRequest(`/fixtures/${matchId}/result`, {
-        method: 'POST',
+        method: 'PUT',
         body: payload,
         actorId: updates.editor,
       });
     } else {
       await apiRequest(`/fixtures/${matchId}/result`, {
-        method: 'POST',
+        method: 'PUT',
         body: {
           resultCode: 'VOID',
           teamGoals: null,
