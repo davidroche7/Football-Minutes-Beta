@@ -613,9 +613,12 @@ const convertFixtureDetailToMatch = (detail: ApiFixtureDetail): MatchRecord => {
     }
   }
 
+  // Convert ISO timestamp to yyyy-MM-dd format for HTML date inputs
+  const dateOnly = detail.fixture.fixtureDate.substring(0, 10);
+
   return {
     id: detail.fixture.id,
-    date: detail.fixture.fixtureDate,
+    date: dateOnly,
     opponent: detail.fixture.opponent,
     players,
     allocation,
