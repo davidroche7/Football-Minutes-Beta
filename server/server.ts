@@ -236,8 +236,8 @@ app.patch('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
     const actorId = getActorId(req);
     const fixture = await FixturesService.updateFixtureMetadata(
       req.params.fixtureId,
-      req.body,
-      actorId
+      actorId,
+      req.body
     );
     if (!fixture) {
       return res.status(404).json({ error: 'Fixture not found' });
