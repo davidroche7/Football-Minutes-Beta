@@ -27,6 +27,10 @@ export async function getConfig(req: Request, res: Response) {
   }
 
   // Return as JavaScript that sets window.APP_CONFIG
+  // Prevent caching so config always reflects latest environment variables
   res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.send(`window.APP_CONFIG = ${JSON.stringify(config, null, 2)};`);
 }
