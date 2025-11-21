@@ -190,7 +190,9 @@ export async function listFixtures(options: ListFixturesOptions): Promise<Fixtur
     }
   >(sql, params);
 
-  return result.rows.map((row) => {
+  console.log(`[listFixtures] Found ${result.rows.length} fixtures`);
+  const fixtures = result.rows.map((row) => {
+    console.log(`[listFixtures] Fixture ID: "${row.id}" (type: ${typeof row.id}, length: ${row.id ? row.id.length : 'null'})`);
     const resultRow: MatchResultRow | null =
       row.result_code !== null
         ? {
@@ -207,11 +209,16 @@ export async function listFixtures(options: ListFixturesOptions): Promise<Fixtur
         : null;
     return mapFixtureSummary(row, resultRow);
   });
+  console.log(`[listFixtures] Returning ${fixtures.length} mapped fixtures`);
+  return fixtures;
 }
 
 export async function getFixtureDetail(fixtureId: string): Promise<FixtureDetailDTO | null> {
+  console.log(`[getFixtureDetail] Querying fixture with ID: "${fixtureId}" (type: ${typeof fixtureId}, length: ${fixtureId.length})`);
   const fixtureResult = await query<FixtureRow>('SELECT * FROM fixture WHERE id = $1', [fixtureId]);
+  console.log(`[getFixtureDetail] Query returned ${fixtureResult.rowCount} rows for ID: "${fixtureId}"`);
   if (fixtureResult.rowCount === 0) {
+    console.warn(`[getFixtureDetail] Fixture "${fixtureId}" not found in database - rowCount is 0`);
     return null;
   }
 
