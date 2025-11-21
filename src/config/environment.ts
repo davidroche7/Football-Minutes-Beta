@@ -24,17 +24,38 @@ const toStringOrNull = (value: string | undefined): string | null => {
   return value;
 };
 
-// Use runtime config if available, otherwise fall back to build-time env vars
-const runtimeConfig = typeof window !== 'undefined' ? window.APP_CONFIG : undefined;
+// Lazy getter for runtime config - reads window.APP_CONFIG at access time, not module load time
+const getRuntimeConfig = () => (typeof window !== 'undefined' ? window.APP_CONFIG : undefined);
 
-export const USE_API_PERSISTENCE = runtimeConfig?.USE_API ?? toBoolean(import.meta.env.VITE_USE_API ?? undefined, false);
-export const API_BASE_URL = runtimeConfig?.API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL ?? '/api';
-export const TEAM_ID = runtimeConfig?.TEAM_ID ?? toStringOrNull(import.meta.env.VITE_TEAM_ID ?? undefined);
-const SESSION_SECRET_RAW = runtimeConfig?.SESSION_SECRET ?? toStringOrNull(import.meta.env.VITE_SESSION_SECRET ?? undefined);
+// Export lazy getters so values are read when accessed, not when module loads
+// This ensures window.APP_CONFIG has loaded from /config.js before being read
+export const USE_API_PERSISTENCE = (() => {
+  const config = getRuntimeConfig();
+  return config?.USE_API ?? toBoolean(import.meta.env.VITE_USE_API ?? undefined, false);
+})();
+
+export const API_BASE_URL = (() => {
+  const config = getRuntimeConfig();
+  return config?.API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL ?? '/api';
+})();
+
+export const TEAM_ID = (() => {
+  const config = getRuntimeConfig();
+  return config?.TEAM_ID ?? toStringOrNull(import.meta.env.VITE_TEAM_ID ?? undefined);
+})();
+
+const SESSION_SECRET_RAW = (() => {
+  const config = getRuntimeConfig();
+  return config?.SESSION_SECRET ?? toStringOrNull(import.meta.env.VITE_SESSION_SECRET ?? undefined);
+})();
+
 export const SESSION_SECRET = SESSION_SECRET_RAW ?? 'dev-session-secret';
 
-export const DEFAULT_ACTOR_ROLES = runtimeConfig?.ACTOR_ROLES ??
-  import.meta.env.VITE_ACTOR_ROLES?.split(',').map((role) => role.trim()).filter(Boolean) ?? ['coach'];
+export const DEFAULT_ACTOR_ROLES = (() => {
+  const config = getRuntimeConfig();
+  return config?.ACTOR_ROLES ??
+    import.meta.env.VITE_ACTOR_ROLES?.split(',').map((role) => role.trim()).filter(Boolean) ?? ['coach'];
+})();
 
 if (USE_API_PERSISTENCE && !TEAM_ID) {
   throw new Error('USE_API is true but TEAM_ID is not configured.');
