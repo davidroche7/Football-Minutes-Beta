@@ -219,34 +219,38 @@ function App() {
     [matchPersistenceMode, syncMatchesFromSource]
   );
 
-  const handlePlayersChange = (newPlayers: string[]) => {
+  const handlePlayersChange = useCallback((newPlayers: string[]) => {
     setPlayers(newPlayers);
     setError('');
 
     // Only reset manual GKs if selected GKs are no longer in the player list
-    if (manualGKs) {
-      const invalidGKs = manualGKs.some(gk => gk && !newPlayers.includes(gk));
-      if (invalidGKs) {
-        setManualGKs(null);
+    setManualGKs(prev => {
+      if (!prev) return null;
+      const invalidGKs = prev.some(gk => gk && !newPlayers.includes(gk));
+      return invalidGKs ? null : prev;
+    });
+
+    // Only auto-generate allocation if we DON'T have one yet (first time)
+    setAllocation(prev => {
+      // Keep existing allocation - user may have edited it
+      if (prev !== null) return prev;
+
+      // Generate new allocation only if we have enough players
+      if (newPlayers.length >= 5 && newPlayers.length <= 15) {
+        try {
+          return allocate(newPlayers);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to allocate');
+          return null;
+        }
       }
-    }
 
-    // Auto-generate allocation if we have enough players
-    if (newPlayers.length >= 5 && newPlayers.length <= 15) {
-      try {
-        const newAllocation = allocate(newPlayers);
-        setAllocation(newAllocation);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to allocate');
-        setAllocation(null);
-      }
-    } else {
-      setAllocation(null);
-    }
-  };
+      return null;
+    });
+  }, []); // Empty deps - uses functional setState for all state access
 
 
-  const handleGenerateAllocation = () => {
+  const handleGenerateAllocation = useCallback(() => {
     if (players.length < 5) {
       setError('Need at least 5 players');
       return;
@@ -264,7 +268,7 @@ function App() {
       setError(err instanceof Error ? err.message : 'Failed to allocate');
       setAllocation(null);
     }
-  };
+  }, [players, manualGKs]); // Depends on both - needed for allocate()
 
   const handleSlotClick = (quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
     setEditingQuarter(quarter);
@@ -385,19 +389,25 @@ function App() {
     setDraggedSub(null);
   };
 
-  const handleGKsChange = (gks: [string, string, string, string] | null) => {
+  const handleGKsChange = useCallback((gks: [string, string, string, string] | null) => {
     setManualGKs(gks);
-    // Auto-regenerate if allocation exists
-    if (allocation && players.length >= 5) {
-      try {
-        const newAllocation = allocate(players, gks || undefined);
-        setAllocation(newAllocation);
-        setError('');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to allocate');
+    setError('');
+
+    // Always regenerate allocation with new GK selection (if we have one)
+    setAllocation(prev => {
+      // Only regenerate if we have an existing allocation and valid player count
+      if (!prev || players.length < 5 || players.length > 15) {
+        return prev;
       }
-    }
-  };
+
+      try {
+        return allocate(players, gks || undefined);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to regenerate with GK selection');
+        return prev; // Keep previous allocation on error
+      }
+    });
+  }, [players]); // Depends on players - needed for allocate()
 
   const handleOpenConfirm = () => {
     setConfirmError('');
