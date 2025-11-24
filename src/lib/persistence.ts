@@ -710,8 +710,8 @@ const saveMatchApi = async (payload: SaveMatchPayload): Promise<MatchRecord> => 
 
   const fixtureResponse = await apiRequest<{ data: ApiFixtureSummary }>('/fixtures', {
     method: 'POST',
+    query: { teamId },
     body: {
-      teamId,
       seasonId: null,
       opponent: payload.opponent,
       fixtureDate: payload.date,
