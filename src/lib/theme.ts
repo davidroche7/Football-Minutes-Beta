@@ -1,9 +1,9 @@
 /**
  * Theme management utility
- * Supports: light, dark, and system (follows OS preference)
+ * Supports: light and dark
  */
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'ffm_theme';
 
@@ -11,14 +11,14 @@ const STORAGE_KEY = 'ffm_theme';
  * Get the current theme preference from localStorage
  */
 export function getStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'system';
+  if (typeof window === 'undefined') return 'light';
 
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === 'light' || stored === 'dark' || stored === 'system') {
+  if (stored === 'light' || stored === 'dark') {
     return stored;
   }
 
-  return 'system';
+  return 'light';
 }
 
 /**
@@ -30,25 +30,12 @@ export function saveTheme(theme: Theme): void {
 }
 
 /**
- * Get the effective theme (resolves 'system' to 'light' or 'dark')
- */
-export function getEffectiveTheme(theme: Theme): 'light' | 'dark' {
-  if (theme !== 'system') return theme;
-
-  if (typeof window === 'undefined') return 'light';
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-/**
  * Apply theme to the document
  */
 export function applyTheme(theme: Theme): void {
   if (typeof window === 'undefined') return;
 
-  const effectiveTheme = getEffectiveTheme(theme);
-
-  if (effectiveTheme === 'dark') {
+  if (theme === 'dark') {
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');

@@ -562,20 +562,24 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-7xl relative">
+        {/* Theme toggle in top right */}
+        <div className="absolute top-0 right-0">
+          <ThemeToggle />
+        </div>
+
         {/* Header */}
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
             Football Minutes
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Track lineups, stats, and fair playing time
+            Track lineups, stats, and playing time
           </p>
           <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
             <span>
               Signed in as <span className="font-semibold">{session.username}</span>
             </span>
-            <ThemeToggle />
             <button
               onClick={handleLogout}
               className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"

@@ -53,7 +53,7 @@ export function GKSelector({ players, selectedGKs, onGKsChange }: GKSelectorProp
       </div>
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        Select specific players to be GK for each quarter. Leave set to "Auto" for automatic allocation based on fair playing time.
+        Select specific players to be GK for each quarter. Leave set to "Auto" for automatic allocation based on playing time.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

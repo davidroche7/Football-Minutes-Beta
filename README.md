@@ -1,8 +1,8 @@
 # Football Minutes
 
-> Multi-user team management platform for tracking your football season - lineups, stats, and fair playing time distribution.
+> Multi-user team management platform for tracking your football season - lineups, stats, and playing time distribution.
 
-A full-stack TypeScript application with **PostgreSQL persistence** for managing football team rosters, generating fair playing time allocations, tracking match results, analyzing season statistics, and maintaining complete season records.
+A full-stack TypeScript application with **PostgreSQL persistence** for managing football team rosters, generating playing time allocations, tracking match results, analyzing season statistics, and maintaining complete season records.
 
 ## Features
 
