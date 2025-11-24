@@ -11,9 +11,11 @@ A full-stack TypeScript application with **PostgreSQL persistence** for managing
 - **Flexible Rosters**: Support for 5-15 players with GK rotation and mandatory outfield time
 - **Interactive Editor**: Drag/drop quarter editor with real-time validation
 - **Match Management**: Complete flow for recording matches, scores, awards, and lineups
-- **Season Analytics**: Player stats, minutes tracking, goals, awards, and audit history
+- **Season Analytics**: Sortable player stats table, expandable fixtures, audit history
+- **Dark/Light Mode**: Theme toggle with localStorage persistence
+- **Post-Save Summary**: Clean Matchday Overview with clear next steps
+- **Fixture Deletion**: Delete matches with cascade + confirmation modal
 - **Data Import**: Import historical data from Excel spreadsheets
-- **Secure Auth**: Session-based authentication with CSRF protection (TODO)
 - **Rules Engine**: Configurable fairness rules and timing constraints
 
 ## Quick Start
@@ -46,11 +48,11 @@ The app will be available at **http://localhost:3000**
 
 ## Documentation
 
-- **[Development Guide](./docs/DEVELOPMENT.md)** - Local development setup, workflows, and troubleshooting
-- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Deploy to Vercel, Railway, Heroku, Docker, or VPS
-- **[Architecture Decision Records](./docs/adr/)** - Key architectural decisions and rationale
+- **[User Guide](./USER-GUIDE.md)** - Quick guide for coaches using the app
+- **[Next Session](./NEXT-SESSION.md)** - Current state, backlog, and cleanup tasks
 - **[API Documentation](./docs/api-surface-v2.md)** - REST API endpoints reference
-- **[Security Guide](./docs/security.md)** - Authentication, CSRF, and session management
+
+For development and deployment guides, see the [docs/](./docs/) directory.
 
 ## Architecture
 
