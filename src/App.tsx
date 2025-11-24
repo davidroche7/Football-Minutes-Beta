@@ -10,6 +10,7 @@ import { Tabs } from './components/Tabs';
 import { SeasonStatsView } from './components/SeasonStatsView';
 import { RulesEngineView } from './components/RulesEngineView';
 import { LoginForm } from './components/LoginForm';
+import { AuditLogView } from './components/AuditLogView';
 import { allocate, updateSlot, updateSlotProperties, swapPositions, swapWithSub } from './lib/allocator';
 import {
   listMatches,
@@ -901,6 +902,15 @@ function App() {
             </section>
             <section className="mx-auto max-w-5xl">
               <RulesEngineView rules={rules} onSave={handleRulesSave} onReset={handleRulesReset} />
+            </section>
+            <section className="mx-auto max-w-5xl rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Audit Log
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                View all team activity including player changes, match updates, and rule modifications.
+              </p>
+              <AuditLogView limit={100} />
             </section>
           </div>
         )}
