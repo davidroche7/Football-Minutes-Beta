@@ -814,16 +814,10 @@ function App() {
 
             {allocation && (
               <>
-                <div className="mb-8 flex justify-center gap-4">
-                  <button
-                    onClick={handleGenerateAllocation}
-                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold"
-                  >
-                    Re-Generate Allocation
-                  </button>
+                <div className="mb-8 flex justify-center">
                   <button
                     onClick={handleOpenConfirm}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold disabled:cursor-not-allowed disabled:bg-blue-400"
+                    className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-lg disabled:cursor-not-allowed disabled:bg-blue-400"
                     disabled={players.length < 5 || isSavingMatch}
                   >
                     Confirm Team

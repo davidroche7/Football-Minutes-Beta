@@ -43,12 +43,6 @@ export function ConfirmTeamModal({
   const [time, setTime] = useState(initialTime);
   const [opponent, setOpponent] = useState(initialOpponent);
   const [venue, setVenue] = useState<'Home' | 'Away' | 'Neutral'>(initialVenue);
-  const [goalsFor, setGoalsFor] = useState('');
-  const [goalsAgainst, setGoalsAgainst] = useState('');
-  const [outcome, setOutcome] = useState<'Win' | 'Loss' | 'Draw' | ''>('');
-  const [playerOfMatch, setPlayerOfMatch] = useState('');
-  const [honorableMentions, setHonorableMentions] = useState('');
-  const [scorers, setScorers] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -56,12 +50,6 @@ export function ConfirmTeamModal({
       setTime(initialTime);
       setOpponent(initialOpponent);
       setVenue(initialVenue);
-      setGoalsFor('');
-      setGoalsAgainst('');
-      setOutcome('');
-      setPlayerOfMatch('');
-      setHonorableMentions('');
-      setScorers('');
     }
   }, [initialDate, initialTime, initialVenue, initialOpponent, isOpen]);
 
@@ -71,32 +59,31 @@ export function ConfirmTeamModal({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const parsedGoalsFor = goalsFor.trim() === '' ? null : Number(goalsFor);
-    const parsedGoalsAgainst = goalsAgainst.trim() === '' ? null : Number(goalsAgainst);
+    // Match creation - no result details yet
     await onConfirm({
       date,
       time: time.trim(),
       opponent,
       venue,
-      goalsFor: Number.isFinite(parsedGoalsFor) ? parsedGoalsFor : null,
-      goalsAgainst: Number.isFinite(parsedGoalsAgainst) ? parsedGoalsAgainst : null,
-      outcome,
-      playerOfMatch,
-      honorableMentions,
-      scorers,
+      goalsFor: null,
+      goalsAgainst: null,
+      outcome: '',
+      playerOfMatch: '',
+      honorableMentions: '',
+      scorers: '',
     });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-4">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Confirm Match
+            Confirm Match Details
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-3xl leading-none"
             aria-label="Close confirm team modal"
           >
             ×
@@ -104,8 +91,7 @@ export function ConfirmTeamModal({
         </div>
 
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-          Save the current allocation for this fixture. You can edit match
-          details later from Season Stats.
+          Review match details and confirm to save. You can add results and edit details later from Season Stats.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,89 +131,12 @@ export function ConfirmTeamModal({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="match-venue"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Venue
-              </label>
-              <select
-                id="match-venue"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value as typeof venue)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="Home">Home</option>
-                <option value="Away">Away</option>
-                <option value="Neutral">Neutral</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="match-outcome"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Result
-              </label>
-              <select
-                id="match-outcome"
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value as typeof outcome)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">Not set</option>
-                <option value="Win">Win</option>
-                <option value="Draw">Draw</option>
-                <option value="Loss">Loss</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="match-goals-for"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Goals For
-              </label>
-              <input
-                id="match-goals-for"
-                type="number"
-                min={0}
-                value={goalsFor}
-                onChange={(e) => setGoalsFor(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="match-goals-against"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Goals Against
-              </label>
-              <input
-                id="match-goals-against"
-                type="number"
-                min={0}
-                value={goalsAgainst}
-                onChange={(e) => setGoalsAgainst(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-          </div>
-
           <div>
             <label
               htmlFor="match-opponent"
               className="block text-sm font-medium text-gray-700 dark:text-gray-200"
             >
-              Opponent
+              Opponent *
             </label>
             <input
               id="match-opponent"
@@ -240,60 +149,42 @@ export function ConfirmTeamModal({
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="match-player-of-match"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Player of the Match
-              </label>
-              <input
-                id="match-player-of-match"
-                type="text"
-                value={playerOfMatch}
-                onChange={(e) => setPlayerOfMatch(e.target.value)}
-                placeholder="Optional"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="match-scorers"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Goalscorers
-                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Format: "Player: Goals" (e.g. "Isla: 1, Lottie W: 2")
-                </span>
-              </label>
-              <textarea
-                id="match-scorers"
-                rows={2}
-                value={scorers}
-                onChange={(e) => setScorers(e.target.value)}
-                placeholder="e.g. Isla: 1, Lottie W: 2, Emma: 1"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-          </div>
-
           <div>
             <label
-              htmlFor="match-honorable-mentions"
+              htmlFor="match-venue"
               className="block text-sm font-medium text-gray-700 dark:text-gray-200"
             >
-              Honorable Mentions
-              <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">(comma separated)</span>
+              Venue
             </label>
-            <textarea
-              id="match-honorable-mentions"
-              rows={2}
-              value={honorableMentions}
-              onChange={(e) => setHonorableMentions(e.target.value)}
-              placeholder="Optional"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            />
+            <select
+              id="match-venue"
+              value={venue}
+              onChange={(e) => setVenue(e.target.value as typeof venue)}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="Home">Home</option>
+              <option value="Away">Away</option>
+              <option value="Neutral">Neutral</option>
+            </select>
+          </div>
+
+          {/* Player List */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              Selected Players ({players.length})
+            </label>
+            <div className="rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 p-3 max-h-32 overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
+                {players.map((player) => (
+                  <span
+                    key={player}
+                    className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900 px-3 py-1 text-xs font-medium text-blue-800 dark:text-blue-200"
+                  >
+                    {player}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {error && (
