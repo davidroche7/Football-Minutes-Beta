@@ -4,7 +4,7 @@
 
 A full-stack TypeScript application with **PostgreSQL persistence** for managing football team rosters, generating fair playing time allocations, tracking match results, analyzing season statistics, and maintaining complete season records.
 
-## ✨ Features
+## Features
 
 - **Multi-User**: PostgreSQL-backed persistence - works across browsers and users
 - **Smart Allocation**: Automatic fair distribution of playing minutes across 4 quarters
@@ -16,7 +16,7 @@ A full-stack TypeScript application with **PostgreSQL persistence** for managing
 - **Secure Auth**: Session-based authentication with CSRF protection (TODO)
 - **Rules Engine**: Configurable fairness rules and timing constraints
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -51,7 +51,7 @@ Two accounts are pre-configured:
 - **Coach**: `coach` / `CoachSecure1!`
 - **Manager**: `manager` / `ManagerSecure2@`
 
-## 📖 Documentation
+## Documentation
 
 - **[Development Guide](./docs/DEVELOPMENT.md)** - Local development setup, workflows, and troubleshooting
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - Deploy to Vercel, Railway, Heroku, Docker, or VPS
@@ -59,7 +59,7 @@ Two accounts are pre-configured:
 - **[API Documentation](./docs/api-surface-v2.md)** - REST API endpoints reference
 - **[Security Guide](./docs/security.md)** - Authentication, CSRF, and session management
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Frontend (Vite + React)       Backend (Express API)
@@ -100,7 +100,7 @@ Frontend (Vite + React)       Backend (Express API)
 - Docker support
 - Any Node.js hosting platform
 
-## 🧪 Testing & Quality
+## Testing & Quality
 
 ```bash
 # Run tests
@@ -119,7 +119,7 @@ npm run lint
 npm run format
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Football-Minutes-Beta/
@@ -165,7 +165,7 @@ Football-Minutes-Beta/
 3. Players assigned GK must get at least one 5-minute outfield block
 4. All quarters must be fully staffed
 
-## ⚙️ Configuration
+## Configuration
 
 ### Fairness Rules
 
@@ -182,7 +182,7 @@ See `.env.example` for all configuration options. Key variables:
 
 For detailed environment setup, see the [Development Guide](./docs/DEVELOPMENT.md).
 
-## 🚢 Deployment
+## Deployment
 
 ### Railway (Recommended)
 
@@ -208,7 +208,7 @@ Railway provides managed PostgreSQL and auto-deploys from GitHub:
 - **Docker**: See Dockerfile (TODO)
 - **VPS**: PM2 + Nginx (see [DEPLOYMENT.md](./docs/DEPLOYMENT.md))
 
-## 📊 Data Import
+## Data Import
 
 Import historical match data from Excel:
 
@@ -222,7 +222,7 @@ node scripts/db/seed-from-json.cjs
 
 See [Development Guide](./docs/DEVELOPMENT.md#database-operations) for details.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
@@ -232,17 +232,17 @@ See [Development Guide](./docs/DEVELOPMENT.md#database-operations) for details.
 
 See [Development Guide](./docs/DEVELOPMENT.md) for detailed workflow.
 
-## 📝 License
+## License
 
 MIT - see [LICENSE](./LICENSE) file for details
 
-## 🐛 Support
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/davidroche7/Football-Minutes-Beta/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/davidroche7/Football-Minutes-Beta/discussions)
 - **Documentation**: [docs/](./docs/)
 
-## 📚 Further Reading
+## Further Reading
 
 - [Architecture Decision Records](./docs/adr/) - Why we made key technical decisions
 - [API Documentation](./docs/api-surface-v2.md) - REST API reference

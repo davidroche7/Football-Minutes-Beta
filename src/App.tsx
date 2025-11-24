@@ -11,6 +11,7 @@ import { SeasonStatsView } from './components/SeasonStatsView';
 import { RulesEngineView } from './components/RulesEngineView';
 import { LoginForm } from './components/LoginForm';
 import { AuditLogView } from './components/AuditLogView';
+import { ThemeToggle } from './components/ThemeToggle';
 import { allocate, updateSlot, updateSlotProperties, swapPositions, swapWithSub } from './lib/allocator';
 import {
   listMatches,
@@ -533,7 +534,7 @@ function App() {
               Football Minutes
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Comprehensive team management for tracking your season
+              Track lineups, stats, and fair playing time
             </p>
           </header>
           <LoginForm
@@ -568,12 +569,13 @@ function App() {
             Football Minutes
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Team management tool for tracking lineups, stats, and fair playing time
+            Track lineups, stats, and fair playing time
           </p>
           <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
             <span>
               Signed in as <span className="font-semibold">{session.username}</span>
             </span>
+            <ThemeToggle />
             <button
               onClick={handleLogout}
               className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -870,8 +872,8 @@ function App() {
 
             {players.length === 0 && (
               <div className="text-center mt-16 text-gray-500 dark:text-gray-400">
-                <p className="text-lg mb-2">Get started by adding players above</p>
-                <p className="text-sm">Add 5-15 players to generate a fair allocation</p>
+                <p className="text-lg mb-2">Add players above to begin</p>
+                <p className="text-sm">Requires 5-15 players to generate allocation</p>
               </div>
             )}
           </>
@@ -891,8 +893,7 @@ function App() {
                 Player Roster Management
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Manage your complete team roster. Add new players, update player information, or remove players from the roster.
-                Players added here will be available for selection in the "Next Match" module.
+                Add, edit, or remove players. Players added here are available in Next Match.
               </p>
               <PlayerInput
                 onPlayersChange={handlePlayersChange}

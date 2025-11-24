@@ -873,7 +873,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                     className="rounded-lg border-2 border-red-300 bg-red-50 p-4 shadow-sm dark:border-red-800 dark:bg-red-900/20"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="text-red-600 dark:text-red-400 text-xl">⚠️</div>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-red-800 dark:text-red-300">
                           Error Loading Match Data
