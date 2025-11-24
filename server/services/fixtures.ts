@@ -732,3 +732,38 @@ export async function setFixtureResult(
     return mapFixtureSummary(fixtureUpdate.rows[0]!, resultUpsert.rows[0]!);
   });
 }
+
+/**
+ * Delete a fixture and all associated data (cascades automatically)
+ */
+export async function deleteFixture(fixtureId: string, actorId: string | null = null): Promise<void> {
+  return withTransaction(async (client) => {
+    // Get fixture details before deletion for audit
+    const fixtureResult = await client.query<FixtureRow>(
+      `SELECT * FROM fixture WHERE id = $1`,
+      [fixtureId]
+    );
+
+    if (fixtureResult.rows.length === 0) {
+      throw new Error('Fixture not found');
+    }
+
+    const fixture = fixtureResult.rows[0]!;
+
+    // Record audit event before deletion
+    await recordFixtureAudit(client, {
+      actorId,
+      entityId: fixtureId,
+      eventType: 'deleted',
+      previousState: fixture,
+      nextState: null,
+    });
+
+    // Delete fixture - CASCADE will handle all related data:
+    // - fixture_player
+    // - lineup_quarter
+    // - match_result
+    // - match_award
+    await client.query(`DELETE FROM fixture WHERE id = $1`, [fixtureId]);
+  });
+}

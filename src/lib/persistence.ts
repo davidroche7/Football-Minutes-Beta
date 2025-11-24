@@ -964,6 +964,40 @@ export async function bulkImportMatches(
   return bulkImportMatchesLocal(payloads);
 }
 
+export async function deleteMatch(matchId: string): Promise<void> {
+  if (canUseApi()) {
+    try {
+      await apiRequest(`/fixtures/${matchId}`, {
+        method: 'DELETE',
+      });
+      setMatchPersistenceState('api');
+    } catch (error) {
+      logApiFallback(error);
+      setMatchPersistenceState('fallback', error);
+      // Fall through to local deletion
+      deleteMatchLocal(matchId);
+    }
+  } else {
+    if (USE_API_PERSISTENCE && isBrowser && !TEAM_ID) {
+      setMatchPersistenceState(
+        'fallback',
+        'TEAM_ID environment variable is required when VITE_USE_API is true.'
+      );
+    } else {
+      setMatchPersistenceState('local');
+    }
+    deleteMatchLocal(matchId);
+  }
+}
+
+const deleteMatchLocal = async (matchId: string): Promise<void> => {
+  if (!isBrowser) return;
+
+  const matches = await listMatchesLocal();
+  const filtered = matches.filter((m: MatchRecord) => m.id !== matchId);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+};
+
 export function getMatchPersistenceMode(): MatchPersistenceMode {
   return matchPersistenceMode;
 }

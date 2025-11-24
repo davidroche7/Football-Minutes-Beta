@@ -274,6 +274,20 @@ app.patch('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
   }
 });
 
+app.delete('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
+  try {
+    const actorId = getActorId(req);
+    await FixturesService.deleteFixture(req.params.fixtureId, actorId);
+    res.status(204).send(); // 204 No Content on successful deletion
+  } catch (error) {
+    console.error('DELETE /api/fixtures/:fixtureId error:', error);
+    if (error instanceof Error && error.message === 'Fixture not found') {
+      return res.status(404).json({ error: 'Fixture not found' });
+    }
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to delete fixture' });
+  }
+});
+
 app.put('/api/fixtures/:fixtureId/lineup', async (req: Request, res: Response) => {
   try {
     const actorId = getActorId(req);

@@ -5,6 +5,7 @@ import type { MatchRecord, MatchResult, SaveMatchPayload } from '../lib/persiste
 import {
   bulkImportMatches,
   updateMatch,
+  deleteMatch,
   type MatchUpdatePayload,
   getMatchPersistenceMode,
   listMatches,
@@ -12,10 +13,6 @@ import {
 import { fetchTeamStats, fetchPlayerStats } from '../lib/statsClient';
 import { getRules } from '../lib/rules';
 import type { RuleConfig } from '../config/rules';
-import {
-  listRoster,
-  type RosterPlayer,
-} from '../lib/roster';
 import { AllocationGrid } from './AllocationGrid';
 import { EditModal } from './EditModal';
 import { PlayerHeatMap } from './PlayerHeatMap';
@@ -266,7 +263,10 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     slot: PlayerSlot;
   } | null>(null);
 
-  const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    matchId: string;
+    opponent: string;
+  } | null>(null);
   const [apiSeasonSummary, setApiSeasonSummary] = useState<SeasonSnapshot | null>(null);
   const [apiPlayerSummaries, setApiPlayerSummaries] = useState<PlayerSummaryRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -540,15 +540,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   const playerSummaries = apiPlayerSummaries ?? derivedPlayerSummaries;
   const seasonSummary = apiSeasonSummary ?? derivedSeasonSummary;
 
-  const rosterOptions = useMemo(
-    () =>
-      roster
-        .filter((player) => player.removedAt === null)
-        .map((player) => player.name)
-        .sort((a, b) => a.localeCompare(b)),
-    [roster]
-  );
-
   const handleToggleExpand = (matchId: string) => {
     setExpandedMatches((prev) =>
       prev.includes(matchId) ? prev.filter((id) => id !== matchId) : [...prev, matchId]
@@ -610,6 +601,38 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     setMatchFeedback((prev) => ({ ...prev, [match.id]: {} }));
   };
 
+  const handleDeleteFixture = async (matchId: string) => {
+    try {
+      setSavingMatchId(matchId);
+      await deleteMatch(matchId);
+
+      // Remove from local state
+      const updatedMatches = matches.filter(m => m.id !== matchId);
+      onMatchesChange(updatedMatches);
+
+      // Clear drafts and expanded state
+      setDrafts(prev => {
+        const updated = { ...prev };
+        delete updated[matchId];
+        return updated;
+      });
+      setExpandedMatches(prev => prev.filter(id => id !== matchId));
+
+      setDeleteConfirmation(null);
+      setMatchFeedback(prev => ({
+        ...prev,
+        [matchId]: { status: 'Fixture deleted successfully' },
+      }));
+    } catch (error) {
+      setMatchFeedback(prev => ({
+        ...prev,
+        [matchId]: { error: error instanceof Error ? error.message : 'Failed to delete fixture' },
+      }));
+    } finally {
+      setSavingMatchId(null);
+    }
+  };
+
   const handleSaveMatch = async (match: MatchRecord) => {
     const draft = drafts[match.id];
     if (!draft) return;
@@ -660,23 +683,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
-    async function loadRoster() {
-      try {
-        const players = await listRoster({ includeRemoved: true });
-        if (!mounted) return;
-        setRoster(players);
-      } catch (err) {
-        console.error('Failed to load squad roster:', err);
-      }
-    }
-
-    loadRoster();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const handleLegacyImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -746,12 +752,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
 
   const hasMatches = matches.length > 0 || seasonSummary.matches > 0;
   const modalAvailablePlayers = modalState
-    ? Array.from(
-        new Set([
-          ...rosterOptions,
-          ...(drafts[modalState.matchId]?.players ?? []),
-        ])
-      ).sort((a, b) => a.localeCompare(b))
+    ? (drafts[modalState.matchId]?.players ?? []).sort((a, b) => a.localeCompare(b))
     : [];
 
   return (
@@ -958,6 +959,13 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                           Fairness warning active
                         </div>
                       )}
+                      <button
+                        onClick={() => setDeleteConfirmation({ matchId: match.id, opponent: draft.opponent })}
+                        className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                        disabled={isSaving}
+                      >
+                        Delete
+                      </button>
                       <button
                         onClick={() => handleToggleExpand(match.id)}
                         className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -1343,6 +1351,51 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             setModalState(null);
           }}
         />
+      )}
+
+      {deleteConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              Delete Fixture
+            </h2>
+
+            <p className="text-gray-700 dark:text-gray-300 mb-4">
+              Are you sure you want to delete the fixture against <strong>{deleteConfirmation.opponent}</strong>?
+            </p>
+
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-md p-3 mb-6">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-semibold mb-2">
+                This will permanently delete:
+              </p>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-300 list-disc list-inside space-y-1">
+                <li>Lineup data for all 4 quarters</li>
+                <li>Match result and awards</li>
+                <li>Player statistics for this fixture</li>
+              </ul>
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-semibold mt-2">
+                This cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirmation(null)}
+                className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+                disabled={savingMatchId === deleteConfirmation.matchId}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteFixture(deleteConfirmation.matchId)}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={savingMatchId === deleteConfirmation.matchId}
+              >
+                {savingMatchId === deleteConfirmation.matchId ? 'Deleting...' : 'Delete Fixture'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
