@@ -44,13 +44,6 @@ npm run dev
 
 The app will be available at **http://localhost:3000**
 
-### Default Credentials
-
-Two accounts are pre-configured:
-
-- **Coach**: `coach` / `CoachSecure1!`
-- **Manager**: `manager` / `ManagerSecure2@`
-
 ## Documentation
 
 - **[Development Guide](./docs/DEVELOPMENT.md)** - Local development setup, workflows, and troubleshooting

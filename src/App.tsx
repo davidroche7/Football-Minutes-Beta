@@ -544,17 +544,6 @@ function App() {
               setError('');
             }}
           />
-          <div className="max-w-sm rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <p className="mb-2 font-medium">Sample Accounts</p>
-            <ul className="space-y-1">
-              <li>
-                <span className="font-mono">coach / CoachSecure1!</span>
-              </li>
-              <li>
-                <span className="font-mono">manager / ManagerSecure2@</span>
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
     );
