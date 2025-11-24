@@ -538,9 +538,10 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   const seasonSummary = apiSeasonSummary ?? derivedSeasonSummary;
 
   // Sort player summaries based on current sort field and direction
+  // Filter out players with 0 matches (test/deleted players)
   const playerSummaries = useMemo(() => {
-    const sorted = [...unsortedPlayerSummaries];
-    sorted.sort((a, b) => {
+    const filtered = unsortedPlayerSummaries.filter(player => player.matchesPlayed > 0);
+    filtered.sort((a, b) => {
       let comparison = 0;
 
       if (sortField === 'player') {
@@ -551,7 +552,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-    return sorted;
+    return filtered;
   }, [unsortedPlayerSummaries, sortField, sortDirection]);
 
   const handleSortColumn = (field: SortField) => {
