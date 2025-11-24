@@ -29,7 +29,6 @@ interface PlayerSummaryRow {
   totalMinutes: number;
   matchesPlayed: number;
   gkQuarters: number;
-  targetMinutes: number;
   goals: number;
   playerOfMatchAwards: number;
   honorableMentions: number;
@@ -276,6 +275,11 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
 
   const [seasonStatsTab, setSeasonStatsTab] = useState<'games' | 'players'>('games');
 
+  // Player stats sorting state
+  type SortField = 'player' | 'totalMinutes' | 'matchesPlayed' | 'gkQuarters' | 'goals' | 'playerOfMatchAwards' | 'honorableMentions';
+  const [sortField, setSortField] = useState<SortField>('totalMinutes');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
   const rules = useMemo(() => getRules(), []);
   const perMatchTarget = rules.quarterDuration * rules.quarters;
 
@@ -322,7 +326,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
           totalMinutes: player.totalMinutes,
           matchesPlayed: player.appearances,
           gkQuarters: player.goalkeeperQuarters,
-          targetMinutes: player.appearances * perMatchTarget,
           goals: player.goals,
           playerOfMatchAwards: player.playerOfMatch,
           honorableMentions: player.honorableMentions,
@@ -407,7 +410,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             totalMinutes: 0,
             matchesPlayed: 0,
             gkQuarters: 0,
-            targetMinutes: 0,
             goals: 0,
             playerOfMatchAwards: 0,
             honorableMentions: 0,
@@ -415,7 +417,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
 
         entry.totalMinutes += total;
         entry.matchesPlayed += 1;
-        entry.targetMinutes += perMatchTarget;
       });
 
       match.allocation.quarters.forEach((quarter) => {
@@ -428,7 +429,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                 totalMinutes: 0,
                 matchesPlayed: 0,
                 gkQuarters: 0,
-                targetMinutes: 0,
                 goals: 0,
                 playerOfMatchAwards: 0,
                 honorableMentions: 0,
@@ -453,7 +453,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
               totalMinutes: 0,
               matchesPlayed: 0,
               gkQuarters: 0,
-              targetMinutes: 0,
               goals: 0,
               playerOfMatchAwards: 0,
               honorableMentions: 0,
@@ -471,7 +470,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             totalMinutes: 0,
             matchesPlayed: 0,
             gkQuarters: 0,
-            targetMinutes: 0,
             goals: 0,
             playerOfMatchAwards: 0,
             honorableMentions: 0,
@@ -489,7 +487,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
               totalMinutes: 0,
               matchesPlayed: 0,
               gkQuarters: 0,
-              targetMinutes: 0,
               goals: 0,
               playerOfMatchAwards: 0,
               honorableMentions: 0,
@@ -537,8 +534,36 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     };
   }, [matches]);
 
-  const playerSummaries = apiPlayerSummaries ?? derivedPlayerSummaries;
+  const unsortedPlayerSummaries = apiPlayerSummaries ?? derivedPlayerSummaries;
   const seasonSummary = apiSeasonSummary ?? derivedSeasonSummary;
+
+  // Sort player summaries based on current sort field and direction
+  const playerSummaries = useMemo(() => {
+    const sorted = [...unsortedPlayerSummaries];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortField === 'player') {
+        comparison = a.player.localeCompare(b.player);
+      } else {
+        comparison = a[sortField] - b[sortField];
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [unsortedPlayerSummaries, sortField, sortDirection]);
+
+  const handleSortColumn = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking same column
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with default descending for numbers, ascending for names
+      setSortField(field);
+      setSortDirection(field === 'player' ? 'asc' : 'desc');
+    }
+  };
 
   const handleToggleExpand = (matchId: string) => {
     setExpandedMatches((prev) =>
@@ -1254,45 +1279,87 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             <table className="w-full text-sm">
               <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">
-                    Player
+                  <th
+                    onClick={() => handleSortColumn('player')}
+                    className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center gap-1">
+                      Player
+                      {sortField === 'player' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    Total Minutes
+                  <th
+                    onClick={() => handleSortColumn('totalMinutes')}
+                    className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Total Minutes
+                      {sortField === 'totalMinutes' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    Matches
+                  <th
+                    onClick={() => handleSortColumn('matchesPlayed')}
+                    className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Matches
+                      {sortField === 'matchesPlayed' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    GK Quarters
+                  <th
+                    onClick={() => handleSortColumn('gkQuarters')}
+                    className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      GK Quarters
+                      {sortField === 'gkQuarters' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    Target Minutes
+                  <th
+                    onClick={() => handleSortColumn('goals')}
+                    className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Goals
+                      {sortField === 'goals' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    Balance
+                  <th
+                    onClick={() => handleSortColumn('playerOfMatchAwards')}
+                    className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      POTM
+                      {sortField === 'playerOfMatchAwards' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    Goals
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    POTM
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">
-                    H.M.
+                  <th
+                    onClick={() => handleSortColumn('honorableMentions')}
+                    className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      H.M.
+                      {sortField === 'honorableMentions' && (
+                        <span className="text-xs">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {playerSummaries.map((row) => {
-                  const balance = row.totalMinutes - row.targetMinutes;
-                  const balanceClass =
-                    balance > 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : balance < 0
-                      ? 'text-red-600 dark:text-red-400'
-                      : 'text-gray-600 dark:text-gray-400';
-                  return (
+                {playerSummaries.map((row) => (
                     <tr key={row.player} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                         {row.player}
@@ -1307,13 +1374,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                         {row.gkQuarters}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
-                        {row.targetMinutes}
-                      </td>
-                      <td className={`px-4 py-3 text-right font-medium ${balanceClass}`}>
-                        {balance > 0 ? '+' : ''}
-                        {balance}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
                         {row.goals}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
@@ -1323,8 +1383,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                         {row.honorableMentions}
                       </td>
                     </tr>
-                  );
-                })}
+                  ))}
               </tbody>
             </table>
           </div>
