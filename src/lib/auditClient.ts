@@ -1,4 +1,4 @@
-import { API_BASE_URL, TEAM_ID } from '../config/environment';
+import { TEAM_ID } from '../config/environment';
 import { apiRequest } from './apiClient';
 
 export interface AuditEvent {
@@ -28,7 +28,7 @@ export async function fetchAuditEvents(query: AuditQuery = {}): Promise<AuditEve
   if (query.entityId) params.entityId = query.entityId;
   if (typeof query.limit === 'number') params.limit = String(query.limit);
 
-  const response = await apiRequest<{ data: AuditEvent[] }>(`${API_BASE_URL}/audit`, {
+  const response = await apiRequest<{ data: AuditEvent[] }>('/audit', {
     query: params,
   });
   return Array.isArray(response?.data) ? response.data : [];
