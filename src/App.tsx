@@ -134,6 +134,7 @@ function App() {
   const [confirmError, setConfirmError] = useState<string>('');
   const [isSavingMatch, setIsSavingMatch] = useState(false);
   const [activeTab, setActiveTab] = useState<'match' | 'season' | 'management'>('match');
+  const [matchJustSaved, setMatchJustSaved] = useState(false);
   const [rules, setRules] = useState<RuleConfig>(() => getRules());
 
   // Match setup state (NEW - at the beginning of flow)
@@ -490,7 +491,11 @@ function App() {
       });
       setSaveStatus(`Match saved for ${date} vs ${opponent}.`);
       setConfirmModalOpen(false);
+      setMatchJustSaved(true);
       await syncMatchesFromSource();
+
+      // Scroll to top to show success message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setConfirmError(err instanceof Error ? err.message : 'Failed to save match');
       refreshMatchPersistenceState();
@@ -691,7 +696,7 @@ function App() {
           </section>
         )}
 
-        {activeTab === 'match' && matchSetupComplete && (
+        {activeTab === 'match' && matchSetupComplete && !matchJustSaved && (
           <>
             <div className="mb-4 flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
               <div className="text-sm text-gray-700 dark:text-gray-300">
@@ -870,6 +875,93 @@ function App() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === 'match' && matchJustSaved && allocation && (
+          <div className="mx-auto max-w-5xl space-y-6">
+            {/* Matchday Overview */}
+            <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
+                Matchday Overview
+              </h2>
+
+              {/* Match Details Summary */}
+              <div className="mb-6 rounded-md bg-gray-50 p-4 dark:bg-gray-800">
+                <div className="grid gap-3 text-sm md:grid-cols-2">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                    <span className="text-gray-900 dark:text-white">{matchDetails.date}</span>
+                    {matchDetails.time && (
+                      <>
+                        {' '}
+                        <span className="text-gray-600 dark:text-gray-400">at {matchDetails.time}</span>
+                      </>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Opponent:</span>{' '}
+                    <span className="text-gray-900 dark:text-white">{matchDetails.opponent}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Venue:</span>{' '}
+                    <span className="text-gray-900 dark:text-white">{matchDetails.venue}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Squad Size:</span>{' '}
+                    <span className="text-gray-900 dark:text-white">{players.length} players</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Allocation Summary */}
+              <div className="mb-6">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
+                  Quarter Allocation
+                </h3>
+                <AllocationSummaryCard allocation={allocation} selectedPlayers={players} />
+              </div>
+
+              {/* Player Minutes Summary */}
+              <div>
+                <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
+                  Player Minutes
+                </h3>
+                <PlayerSummary allocation={allocation} allPlayers={players} />
+              </div>
+            </section>
+
+            {/* Navigation Actions */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+              <button
+                onClick={() => {
+                  setMatchJustSaved(false);
+                  setMatchSetupComplete(false);
+                  setAllocation(null);
+                  setPlayers([]);
+                  setManualGKs(null);
+                  setSaveStatus('');
+                  setMatchDetails({
+                    date: new Date().toISOString().split('T')[0] || '',
+                    time: '',
+                    opponent: '',
+                    venue: 'Home',
+                  });
+                }}
+                className="rounded-md bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
+              >
+                Create Another Match
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('season');
+                  setMatchJustSaved(false);
+                }}
+                className="rounded-md border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                View Season Stats
+              </button>
+            </div>
+          </div>
         )}
 
         {activeTab === 'season' && (
