@@ -449,16 +449,19 @@ export function getPlayerQuarterBreakdown(
   const breakdown: string[] = [];
 
   allocation.quarters.forEach((quarter) => {
-    const playerSlot = quarter.slots.find((s) => s.player === playerName);
+    // Find ALL slots for this player in the quarter (they may have multiple)
+    const playerSlots = quarter.slots.filter((s) => s.player === playerName);
 
-    if (!playerSlot) {
+    if (playerSlots.length === 0) {
       // Player is a sub this quarter
       breakdown.push('sub');
-    } else if (playerSlot.position === 'GK') {
+    } else if (playerSlots.some((s) => s.position === 'GK')) {
+      // Player is GK this quarter
       breakdown.push('GK');
     } else {
-      // Outfield player - show minutes
-      breakdown.push(playerSlot.minutes.toString());
+      // Outfield player - sum up all their minutes in this quarter
+      const totalMinutes = playerSlots.reduce((sum, slot) => sum + slot.minutes, 0);
+      breakdown.push(totalMinutes.toString());
     }
   });
 
