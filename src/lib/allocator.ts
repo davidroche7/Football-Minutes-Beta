@@ -20,7 +20,7 @@ const MAX_ALLOCATION_ATTEMPTS = 200;
  * 3. Track player minutes to minimise variance.
  * 4. Enforce fairness rules (GK outfield requirement, no consecutive subs).
  */
-export function allocate(players: string[], manualGKs?: [string, string, string, string]): Allocation {
+export function allocate(players: string[], manualGKs?: [string, string, string, string], subPoints?: number[]): Allocation {
   if (players.length < 5) {
     throw new Error('Need at least 5 players for a 5-a-side match');
   }
@@ -43,7 +43,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
   let bestAllocationWarnings: string[] = [];
 
   for (let attempt = 0; attempt < MAX_ALLOCATION_ATTEMPTS; attempt++) {
-    const attemptResult = performAllocationAttempt(players, manualGKs);
+    const attemptResult = performAllocationAttempt(players, manualGKs, subPoints);
     const { allocation, variance, successiveSubError } = attemptResult;
 
     if (successiveSubError) {
@@ -58,7 +58,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
     }
 
     if (variance <= CONFIG.RULES.MAX_MINUTE_VARIANCE) {
-      return { ...allocation, warnings: [] };
+      return { ...allocation, subPoints, warnings: [] };
     }
   }
 
@@ -70,7 +70,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
   }
 
   if (bestVariance <= CONFIG.RULES.MAX_MINUTE_VARIANCE) {
-    return { ...bestAllocation, warnings: bestAllocationWarnings };
+    return { ...bestAllocation, subPoints, warnings: bestAllocationWarnings };
   }
 
   const warning =
@@ -78,6 +78,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
     `of ${CONFIG.RULES.MAX_MINUTE_VARIANCE}. Consider adjusting rules for larger rosters.`;
   return {
     ...bestAllocation,
+    subPoints,
     warnings: [warning],
   };
 }
@@ -90,7 +91,8 @@ interface AllocationAttemptResult {
 
 function performAllocationAttempt(
   players: string[],
-  manualGKs?: [string, string, string, string]
+  manualGKs?: [string, string, string, string],
+  subPoints?: number[]
 ): AllocationAttemptResult {
   const playerMinutes = new Map<string, number>();
   const playerGKCount = new Map<string, number>();
@@ -112,12 +114,16 @@ function performAllocationAttempt(
       players.filter((p) => (consecutiveSubCounts.get(p) || 0) >= 1)
     );
 
+    const subPoint = subPoints?.[q - 1] ?? CONFIG.TIME_BLOCKS.OUTFIELD_FIRST;
+    const waveDurations = { first: subPoint, second: CONFIG.QUARTER_DURATION - subPoint };
+
     const slots = allocateQuarter(
       q as Quarter,
       players,
       playerMinutes,
       playerGKCount,
       playerOutfieldPrimaryWaveCount,
+      waveDurations,
       manualGK,
       mustPlayPlayers
     );
@@ -155,6 +161,7 @@ function allocateQuarter(
   playerMinutes: Map<string, number>,
   playerGKCount: Map<string, number>,
   playerOutfieldPrimaryWaveCount: Map<string, number>,
+  waveDurations: { first: number; second: number },
   manualGK?: string,
   mustPlayPlayers?: Set<string>
 ): PlayerSlot[] {
@@ -186,15 +193,15 @@ function allocateQuarter(
 
   // Assign 2 DEF, 2 ATT
   firstWave.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_FIRST, wave: 'first' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_FIRST);
+    slots.push({ player: p, position: 'DEF', minutes: waveDurations.first, wave: 'first' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.first);
     playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
     usedThisQuarter.add(p);
   });
 
   firstWave.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_FIRST, wave: 'first' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_FIRST);
+    slots.push({ player: p, position: 'ATT', minutes: waveDurations.first, wave: 'first' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.first);
     playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
     usedThisQuarter.add(p);
   });
@@ -214,13 +221,13 @@ function allocateQuarter(
   );
 
   secondWave.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_SECOND, wave: 'second' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_SECOND);
+    slots.push({ player: p, position: 'DEF', minutes: waveDurations.second, wave: 'second' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.second);
   });
 
   secondWave.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: CONFIG.TIME_BLOCKS.OUTFIELD_SECOND, wave: 'second' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.TIME_BLOCKS.OUTFIELD_SECOND);
+    slots.push({ player: p, position: 'ATT', minutes: waveDurations.second, wave: 'second' });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.second);
   });
 
   return slots;
@@ -391,12 +398,12 @@ export function validateAllocation(allocation: Allocation): string[] {
           (s) =>
             s.player === gkPlayer &&
             s.position !== 'GK' &&
-            s.minutes === config.TIME_BLOCKS.OUTFIELD_FIRST
+            s.wave === 'first'
         )
       );
 
       if (!hasOutfieldPrimaryWave) {
-        errors.push(`Player ${gkPlayer} played GK but has no 0-5 minute outfield block`);
+        errors.push(`Player ${gkPlayer} played GK but has no first-wave outfield block`);
       }
     });
   }
