@@ -10,6 +10,7 @@ interface AllocationGridProps {
   onSubDragStart?: (quarter: Quarter, playerName: string) => void;
   onDrop?: (quarter: Quarter, slotIndex: number) => void;
   onDragEnd?: () => void;
+  onSubPointChange?: (quarter: number, subPoint: number) => void;
 }
 
 type DragState = {
@@ -30,6 +31,7 @@ export function AllocationGrid({
   onSubDragStart,
   onDrop,
   onDragEnd,
+  onSubPointChange,
 }: AllocationGridProps) {
   // Enhanced drag state tracking for visual feedback
   const [dragState, setDragState] = useState<DragState>({
@@ -150,6 +152,17 @@ export function AllocationGrid({
     return `${baseClasses} ${clickable} ${draggable} ${stateClasses}`;
   };
 
+  // Compute fairness: mean minutes and which players are too far off
+  const summaryValues = Object.values(allocation.summary);
+  const meanMinutes = summaryValues.length > 0
+    ? summaryValues.reduce((a, b) => a + b, 0) / summaryValues.length
+    : 0;
+  const maxVariance = 5; // CONFIG.RULES.MAX_MINUTE_VARIANCE
+  const isPlayerOverThreshold = (playerName: string) => {
+    const playerTotal = allocation.summary[playerName] ?? 0;
+    return Math.abs(playerTotal - meanMinutes) > maxVariance;
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
@@ -170,14 +183,46 @@ export function AllocationGrid({
           const getSlotIndex = (slot: PlayerSlot) =>
             quarter.slots.findIndex((candidate) => candidate === slot);
 
+          // Derive sub point from first-wave slot minutes, falling back to allocation.subPoints or 5
+          const firstWaveSlot = quarter.slots.find((s) => s.wave === 'first');
+          const subPoint = firstWaveSlot?.minutes
+            ?? allocation.subPoints?.[quarterNumber - 1]
+            ?? 5;
+          const quarterDuration = 10;
+
           return (
             <div
               key={quarter.quarter}
               className="border border-gray-300 dark:border-gray-600 rounded-lg p-4"
             >
-              <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">
-                Quarter {quarter.quarter}
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Quarter {quarter.quarter}
+                </h3>
+                {onSubPointChange && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 mr-1">Subs at:</span>
+                    <button
+                      onClick={() => subPoint > 1 && onSubPointChange(quarterNumber, subPoint - 1)}
+                      disabled={subPoint <= 1}
+                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      -
+                    </button>
+                    <span className="w-6 text-center font-semibold text-gray-900 dark:text-white">
+                      {subPoint}
+                    </span>
+                    <button
+                      onClick={() => subPoint < quarterDuration - 1 && onSubPointChange(quarterNumber, subPoint + 1)}
+                      disabled={subPoint >= quarterDuration - 1}
+                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      +
+                    </button>
+                    <span className="text-gray-500 dark:text-gray-400 ml-1">min</span>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-3">
                 {/* GK */}
@@ -246,11 +291,11 @@ export function AllocationGrid({
                   }
                 })()}
 
-                {/* First Wave - 0-5 minutes */}
+                {/* First Wave */}
                 {quarter.slots.filter((s) => s.wave === 'first').length > 0 && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      0-5 minutes
+                      0-{subPoint} minutes
                     </p>
                     {quarter.slots
                       .filter((s) => s.wave === 'first')
@@ -284,6 +329,9 @@ export function AllocationGrid({
                               </span>
                               <span className="text-gray-700 dark:text-gray-300">
                                 {slot.player}
+                                {isPlayerOverThreshold(slot.player) && (
+                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
+                                )}
                               </span>
                               <span className="text-sm text-gray-600 dark:text-gray-400">
                                 {slot.minutes} min
@@ -295,11 +343,11 @@ export function AllocationGrid({
                   </div>
                 )}
 
-                {/* Second Wave - 5-10 minutes */}
+                {/* Second Wave */}
                 {quarter.slots.filter((s) => s.wave === 'second').length > 0 && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      5-10 minutes
+                      {subPoint}-{quarterDuration} minutes
                     </p>
                     {quarter.slots
                       .filter((s) => s.wave === 'second')
@@ -333,6 +381,9 @@ export function AllocationGrid({
                               </span>
                               <span className="text-gray-700 dark:text-gray-300">
                                 {slot.player}
+                                {isPlayerOverThreshold(slot.player) && (
+                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
+                                )}
                               </span>
                               <span className="text-sm text-gray-600 dark:text-gray-400">
                                 {slot.minutes} min
@@ -382,6 +433,9 @@ export function AllocationGrid({
                               </span>
                               <span className="text-gray-700 dark:text-gray-300">
                                 {slot.player}
+                                {isPlayerOverThreshold(slot.player) && (
+                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
+                                )}
                               </span>
                               <span className="text-sm text-gray-600 dark:text-gray-400">
                                 {slot.minutes} min

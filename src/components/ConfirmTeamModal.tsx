@@ -187,6 +187,42 @@ export function ConfirmTeamModal({
             </div>
           </div>
 
+          {/* Fairness check */}
+          {(() => {
+            const summaryValues = Object.values(allocation.summary);
+            const mean = summaryValues.length > 0
+              ? summaryValues.reduce((a, b) => a + b, 0) / summaryValues.length
+              : 0;
+            const maxVar = 5;
+            const flagged = players.filter((p) => {
+              const mins = allocation.summary[p] ?? 0;
+              return Math.abs(mins - mean) > maxVar;
+            });
+            if (flagged.length === 0) return null;
+            return (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+                <p className="font-semibold mb-1">Fairness Warning</p>
+                <p>
+                  The following players are more than {maxVar} minutes from the squad average ({mean.toFixed(0)} min):
+                </p>
+                <ul className="mt-1 list-disc list-inside">
+                  {flagged.map((p) => {
+                    const mins = allocation.summary[p] ?? 0;
+                    const diff = mins - mean;
+                    return (
+                      <li key={p}>
+                        {p}: {mins} min ({diff > 0 ? '+' : ''}{diff.toFixed(0)} from avg)
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-2 text-xs">
+                  You can still confirm, but consider adjusting minutes for a fairer distribution.
+                </p>
+              </div>
+            );
+          })()}
+
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/50 dark:text-red-200">
               {error}

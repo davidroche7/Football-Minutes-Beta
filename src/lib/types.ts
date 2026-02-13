@@ -48,6 +48,8 @@ export interface Allocation {
   summary: Record<string, number>;
   /** Optional warnings generated during allocation */
   warnings?: string[];
+  /** Per-quarter sub points [Q1, Q2, Q3, Q4] — minute within quarter when subs happen */
+  subPoints?: number[];
 }
 
 /**

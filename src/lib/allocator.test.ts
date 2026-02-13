@@ -104,14 +104,14 @@ describe('allocator', () => {
         });
       });
 
-      // Each GK player should have at least one primary outfield slot
+      // Each GK player should have at least one first-wave outfield slot
       gkPlayers.forEach((gkPlayer) => {
         const hasPrimaryOutfield = allocation.quarters.some((q) =>
           q.slots.some(
             (s) =>
               s.player === gkPlayer &&
               s.position !== 'GK' &&
-              s.minutes === CONFIG.TIME_BLOCKS.OUTFIELD_FIRST
+              s.wave === 'first'
           )
         );
         expect(hasPrimaryOutfield).toBe(true);
@@ -464,6 +464,119 @@ describe('allocator', () => {
 
       expect(subsAfter).toContain(playingPlayer);
       expect(subsAfter).not.toContain(sub);
+    });
+  });
+
+  describe('allocate with custom sub points', () => {
+    it('should use per-quarter sub points for wave durations', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const subPoints = [7, 3, 6, 4];
+      const allocation = allocate(players, undefined, subPoints);
+
+      expect(allocation.subPoints).toEqual(subPoints);
+
+      allocation.quarters.forEach((q, i) => {
+        const expectedFirst = subPoints[i]!;
+        const expectedSecond = CONFIG.QUARTER_DURATION - expectedFirst;
+
+        q.slots.forEach((slot) => {
+          if (slot.position === 'GK') {
+            expect(slot.minutes).toBe(CONFIG.TIME_BLOCKS.GK_FULL);
+          } else if (slot.wave === 'first') {
+            expect(slot.minutes).toBe(expectedFirst);
+          } else if (slot.wave === 'second') {
+            expect(slot.minutes).toBe(expectedSecond);
+          }
+        });
+      });
+    });
+
+    it('should produce correct total minutes with asymmetric sub points', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const subPoints = [7, 7, 7, 7];
+      const allocation = allocate(players, undefined, subPoints);
+
+      const totalMinutes = Object.values(allocation.summary).reduce(
+        (sum, minutes) => sum + minutes,
+        0
+      );
+      const expectedTotalMinutes = CONFIG.QUARTERS * CONFIG.QUARTER_DURATION * 5;
+      expect(totalMinutes).toBe(expectedTotalMinutes);
+    });
+
+    it('should handle extreme sub points (1/9 split)', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const subPoints = [1, 1, 1, 1];
+      const allocation = allocate(players, undefined, subPoints);
+
+      allocation.quarters.forEach((q) => {
+        q.slots.filter((s) => s.wave === 'first').forEach((s) => {
+          expect(s.minutes).toBe(1);
+        });
+        q.slots.filter((s) => s.wave === 'second').forEach((s) => {
+          expect(s.minutes).toBe(9);
+        });
+      });
+    });
+
+    it('should handle extreme sub points (9/1 split)', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const subPoints = [9, 9, 9, 9];
+      const allocation = allocate(players, undefined, subPoints);
+
+      allocation.quarters.forEach((q) => {
+        q.slots.filter((s) => s.wave === 'first').forEach((s) => {
+          expect(s.minutes).toBe(9);
+        });
+        q.slots.filter((s) => s.wave === 'second').forEach((s) => {
+          expect(s.minutes).toBe(1);
+        });
+      });
+    });
+
+    it('should default to 5/5 split when subPoints not provided', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const allocation = allocate(players);
+
+      allocation.quarters.forEach((q) => {
+        q.slots.filter((s) => s.wave === 'first').forEach((s) => {
+          expect(s.minutes).toBe(5);
+        });
+        q.slots.filter((s) => s.wave === 'second').forEach((s) => {
+          expect(s.minutes).toBe(5);
+        });
+      });
+    });
+
+    it('should allow different sub points per quarter', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const subPoints = [3, 5, 7, 9];
+      const allocation = allocate(players, undefined, subPoints);
+
+      expect(allocation.quarters[0]!.slots.find((s) => s.wave === 'first')!.minutes).toBe(3);
+      expect(allocation.quarters[1]!.slots.find((s) => s.wave === 'first')!.minutes).toBe(5);
+      expect(allocation.quarters[2]!.slots.find((s) => s.wave === 'first')!.minutes).toBe(7);
+      expect(allocation.quarters[3]!.slots.find((s) => s.wave === 'first')!.minutes).toBe(9);
+    });
+
+    it('should pass validation with asymmetric sub points', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
+      const subPoints = [7, 3, 7, 3];
+      const allocation = allocate(players, undefined, subPoints);
+
+      const errors = validateAllocation(allocation);
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should work with manual GKs and sub points combined', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+      const manualGKs: [string, string, string, string] = ['P1', 'P2', 'P3', 'P4'];
+      const subPoints = [7, 3, 6, 4];
+      const allocation = allocate(players, manualGKs, subPoints);
+
+      expect(allocation.quarters[0]!.slots.find((s) => s.position === 'GK')!.player).toBe('P1');
+      expect(allocation.quarters[0]!.slots.find((s) => s.wave === 'first')!.minutes).toBe(7);
+      expect(allocation.subPoints).toEqual(subPoints);
     });
   });
 

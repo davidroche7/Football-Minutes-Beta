@@ -95,6 +95,7 @@ function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadStoredSession());
   const [players, setPlayers] = useState<string[]>([]);
   const [allocation, setAllocation] = useState<Allocation | null>(null);
+  const [subPoints, setSubPoints] = useState<number[]>([5, 5, 5, 5]);
   const [error, setError] = useState<string>('');
   const [manualGKs, setManualGKs] = useState<[string, string, string, string] | null>(null);
   const [matchPersistenceMode, setMatchPersistenceMode] = useState(() => getMatchPersistenceMode());
@@ -241,7 +242,7 @@ function App() {
       // Generate new allocation only if we have enough players
       if (newPlayers.length >= 5 && newPlayers.length <= 15) {
         try {
-          return allocate(newPlayers);
+          return allocate(newPlayers, undefined, subPoints);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to allocate');
           return null;
@@ -250,7 +251,7 @@ function App() {
 
       return null;
     });
-  }, []); // Empty deps - uses functional setState for all state access
+  }, [subPoints]); // subPoints needed for allocate()
 
 
   const handleGenerateAllocation = useCallback(() => {
@@ -264,14 +265,14 @@ function App() {
     }
 
     try {
-      const newAllocation = allocate(players, manualGKs || undefined);
+      const newAllocation = allocate(players, manualGKs || undefined, subPoints);
       setAllocation(newAllocation);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to allocate');
       setAllocation(null);
     }
-  }, [players, manualGKs]); // Depends on both - needed for allocate()
+  }, [players, manualGKs, subPoints]);
 
   const handleSlotClick = (quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
     setEditingQuarter(quarter);
@@ -295,17 +296,83 @@ function App() {
   const handleSaveSlotProperties = (
     quarter: Quarter,
     slotIndex: number,
-    updates: Partial<Pick<PlayerSlot, 'wave'>>
+    updates: Partial<Pick<PlayerSlot, 'wave' | 'minutes'>>
   ) => {
     if (!allocation) return;
 
     try {
-      const updatedAllocation = updateSlotProperties(allocation, quarter, slotIndex, updates);
+      let updatedAllocation = updateSlotProperties(allocation, quarter, slotIndex, updates);
+
+      // Paired wave balancing: when minutes change, adjust opposite-wave slots
+      if (updates.minutes !== undefined) {
+        const quarterDuration = 10;
+        const changedSlot = updatedAllocation.quarters.find((q) => q.quarter === quarter)?.slots[slotIndex];
+        if (changedSlot && changedSlot.wave) {
+          const oppositeWave = changedSlot.wave === 'first' ? 'second' : 'first';
+          const oppositeMinutes = quarterDuration - updates.minutes;
+          const quarterData = updatedAllocation.quarters.find((q) => q.quarter === quarter);
+          if (quarterData) {
+            // Find which same-position slot this is (1st or 2nd) within its wave
+            const sameWaveSamePos = quarterData.slots
+              .map((s, idx) => ({ slot: s, idx }))
+              .filter((s) => s.slot.wave === changedSlot.wave && s.slot.position === changedSlot.position);
+            const positionOrder = sameWaveSamePos.findIndex((s) => s.idx === slotIndex);
+
+            // Find the matching slot in the opposite wave (same position, same order)
+            const oppositeSlots = quarterData.slots
+              .map((s, idx) => ({ slot: s, idx }))
+              .filter((s) => s.slot.wave === oppositeWave && s.slot.position === changedSlot.position);
+            const pairedSlot = oppositeSlots[positionOrder];
+
+            if (pairedSlot) {
+              updatedAllocation = updateSlotProperties(updatedAllocation, quarter, pairedSlot.idx, { minutes: Math.max(0, oppositeMinutes) });
+            }
+          }
+        }
+      }
+
       setAllocation(updatedAllocation);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update slot properties');
     }
+  };
+
+  const handleSubPointChange = (quarterNumber: number, newSubPoint: number) => {
+    const newSubPoints = [...subPoints];
+    newSubPoints[quarterNumber - 1] = newSubPoint;
+    setSubPoints(newSubPoints);
+
+    if (!allocation) return;
+
+    // Update slot minutes in the affected quarter without full regeneration
+    const quarterDuration = 10;
+    const newQuarters = allocation.quarters.map((q) => {
+      if (q.quarter !== quarterNumber) return q;
+      return {
+        ...q,
+        slots: q.slots.map((slot) => {
+          if (slot.position === 'GK') return slot;
+          if (slot.wave === 'first') return { ...slot, minutes: newSubPoint };
+          if (slot.wave === 'second') return { ...slot, minutes: quarterDuration - newSubPoint };
+          return slot;
+        }),
+      };
+    });
+
+    // Recalculate summary
+    const summary: Record<string, number> = {};
+    newQuarters.forEach((q) => {
+      q.slots.forEach((s) => {
+        summary[s.player] = (summary[s.player] || 0) + s.minutes;
+      });
+    });
+    // Ensure all players are in summary
+    players.forEach((p) => {
+      if (!summary[p]) summary[p] = 0;
+    });
+
+    setAllocation({ ...allocation, quarters: newQuarters, summary, subPoints: newSubPoints });
   };
 
   const handleCloseModal = () => {
@@ -404,13 +471,13 @@ function App() {
       }
 
       try {
-        return allocate(players, gks || undefined);
+        return allocate(players, gks || undefined, subPoints);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to regenerate with GK selection');
         return prev; // Keep previous allocation on error
       }
     });
-  }, [players]); // Depends on players - needed for allocate()
+  }, [players, subPoints]);
 
   const handleOpenConfirm = () => {
     setConfirmError('');
@@ -834,6 +901,7 @@ function App() {
                     onSubDragStart={handleSubDragStart}
                     onDrop={handleDrop}
                     onDragEnd={handleDragEnd}
+                    onSubPointChange={handleSubPointChange}
                   />
                 </div>
 
@@ -866,6 +934,7 @@ function App() {
               availablePlayers={players}
               onSave={handleSaveEdit}
               onSaveProperties={handleSaveSlotProperties}
+              subPoint={editingQuarter ? subPoints[editingQuarter - 1] : undefined}
             />
 
             {players.length === 0 && (
@@ -939,6 +1008,7 @@ function App() {
                   setAllocation(null);
                   setPlayers([]);
                   setManualGKs(null);
+                  setSubPoints([5, 5, 5, 5]);
                   setSaveStatus('');
                   setMatchDetails({
                     date: new Date().toISOString().split('T')[0] || '',
