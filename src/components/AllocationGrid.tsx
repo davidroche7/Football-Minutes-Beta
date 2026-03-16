@@ -169,14 +169,14 @@ export function AllocationGrid({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="w-full max-w-6xl mx-auto p-3 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Quarter Allocation
         </h2>
-        <div className="text-sm text-gray-600 dark:text-gray-400 text-right">
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 sm:text-right">
           {onSlotClick && <p>Click any slot to edit</p>}
-          {onDragStart && <p>Drag outfield players to swap positions and minutes within quarter</p>}
+          {onDragStart && <p className="hidden sm:block">Drag outfield players to swap</p>}
         </div>
       </div>
 
@@ -201,11 +201,11 @@ export function AllocationGrid({
               key={quarter.quarter}
               className="border border-gray-300 dark:border-gray-600 rounded-lg p-4"
             >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Quarter {quarter.quarter}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  Q{quarter.quarter}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {/* Mode toggle */}
                   {onQuarterModeChange && (
                     <div className="flex items-center gap-1 text-xs">
@@ -325,213 +325,67 @@ export function AllocationGrid({
                   }
                 })()}
 
-                {/* Full quarter mode: single flat outfield section */}
-                {mode === 'full' && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Full quarter (0-{quarterDuration} min)
-                    </p>
-                    {quarter.slots
-                      .filter((s) => s.position !== 'GK')
-                      .map((slot) => {
-                        const currentIndex = getSlotIndex(slot);
-                        if (currentIndex < 0) return null;
-                        return (
-                          <div
-                            key={`${quarterNumber}-slot-${currentIndex}`}
-                            draggable={onDragStart && slot.position !== 'GK'}
-                            onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
-                            onDragOver={(e) => handleDragOver(e, quarterNumber, currentIndex)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, quarterNumber, currentIndex, slot)}
-                            onDragEnd={handleDragEndLocal}
-                            onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
-                            className={getSlotClasses(
-                              slot,
-                              `px-3 py-2 rounded-md mb-1 ${
-                                slot.position === 'DEF'
-                                  ? 'bg-blue-100 dark:bg-blue-900'
-                                  : 'bg-red-100 dark:bg-red-900'
-                              }`,
-                              quarterNumber,
-                              currentIndex
-                            )}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {slot.position}
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300">
-                                {slot.player}
-                                {isPlayerOverThreshold(slot.player) && (
-                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
-                                )}
-                              </span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                {slot.minutes} min
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
+                {/* Outfield sections — grouped by wave/mode */}
+                {(() => {
+                  // Build sections: each has a label, a filter, and colour variant
+                  type Section = { label: string; filter: (s: PlayerSlot) => boolean; variant: 'primary' | 'secondary' };
+                  const sections: Section[] = mode === 'full'
+                    ? [{ label: `Full quarter (0-${quarterDuration} min)`, filter: (s) => s.position !== 'GK', variant: 'primary' }]
+                    : [
+                        { label: `0-${subPoint} minutes`, filter: (s) => s.wave === 'first', variant: 'primary' },
+                        { label: `${subPoint}-${quarterDuration} minutes`, filter: (s) => s.wave === 'second', variant: 'secondary' },
+                        { label: 'Other Players', filter: (s) => s.position !== 'GK' && !s.wave, variant: 'primary' },
+                      ];
 
-                {/* Split mode: First Wave */}
-                {mode === 'split' && quarter.slots.filter((s) => s.wave === 'first').length > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      0-{subPoint} minutes
-                    </p>
-                    {quarter.slots
-                      .filter((s) => s.wave === 'first')
-                      .map((slot) => {
-                        const currentIndex = getSlotIndex(slot);
-                        if (currentIndex < 0) return null;
-                        return (
-                          <div
-                            key={`${quarterNumber}-slot-${currentIndex}`}
-                            draggable={onDragStart && slot.position !== 'GK'}
-                            onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
-                            onDragOver={(e) => handleDragOver(e, quarterNumber, currentIndex)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, quarterNumber, currentIndex, slot)}
-                            onDragEnd={handleDragEndLocal}
-                            onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
-                            className={getSlotClasses(
-                              slot,
-                              `px-3 py-2 rounded-md mb-1 ${
-                                slot.position === 'DEF'
-                                  ? 'bg-blue-100 dark:bg-blue-900'
-                                  : 'bg-red-100 dark:bg-red-900'
-                              }`,
-                              quarterNumber,
-                              currentIndex
-                            )}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {slot.position}
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300">
-                                {slot.player}
-                                {isPlayerOverThreshold(slot.player) && (
-                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
-                                )}
-                              </span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                {slot.minutes} min
-                              </span>
+                  return sections.map(({ label, filter, variant }) => {
+                    const slots = quarter.slots.filter(filter);
+                    if (slots.length === 0) return null;
+                    return (
+                      <div key={label} className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{label}</p>
+                        {slots.map((slot) => {
+                          const currentIndex = getSlotIndex(slot);
+                          if (currentIndex < 0) return null;
+                          const colourDef = variant === 'secondary' ? 'bg-blue-50 dark:bg-blue-950' : 'bg-blue-100 dark:bg-blue-900';
+                          const colourAtt = variant === 'secondary' ? 'bg-red-50 dark:bg-red-950' : 'bg-red-100 dark:bg-red-900';
+                          return (
+                            <div
+                              key={`${quarterNumber}-slot-${currentIndex}`}
+                              draggable={onDragStart && slot.position !== 'GK'}
+                              onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
+                              onDragOver={(e) => handleDragOver(e, quarterNumber, currentIndex)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, quarterNumber, currentIndex, slot)}
+                              onDragEnd={handleDragEndLocal}
+                              onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
+                              className={getSlotClasses(
+                                slot,
+                                `px-3 py-2 rounded-md mb-1 ${slot.position === 'DEF' ? colourDef : colourAtt}`,
+                                quarterNumber,
+                                currentIndex
+                              )}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  {slot.position}
+                                </span>
+                                <span className="text-gray-700 dark:text-gray-300">
+                                  {slot.player}
+                                  {isPlayerOverThreshold(slot.player) && (
+                                    <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
+                                  )}
+                                </span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  {slot.minutes} min
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-
-                {/* Split mode: Second Wave */}
-                {mode === 'split' && quarter.slots.filter((s) => s.wave === 'second').length > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      {subPoint}-{quarterDuration} minutes
-                    </p>
-                    {quarter.slots
-                      .filter((s) => s.wave === 'second')
-                      .map((slot) => {
-                        const currentIndex = getSlotIndex(slot);
-                        if (currentIndex < 0) return null;
-                        return (
-                          <div
-                            key={`${quarterNumber}-slot-${currentIndex}`}
-                            draggable={onDragStart && slot.position !== 'GK'}
-                            onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
-                            onDragOver={(e) => handleDragOver(e, quarterNumber, currentIndex)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, quarterNumber, currentIndex, slot)}
-                            onDragEnd={handleDragEndLocal}
-                            onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
-                            className={getSlotClasses(
-                              slot,
-                              `px-3 py-2 rounded-md mb-1 ${
-                                slot.position === 'DEF'
-                                  ? 'bg-blue-50 dark:bg-blue-950'
-                                  : 'bg-red-50 dark:bg-red-950'
-                              }`,
-                              quarterNumber,
-                              currentIndex
-                            )}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {slot.position}
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300">
-                                {slot.player}
-                                {isPlayerOverThreshold(slot.player) && (
-                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
-                                )}
-                              </span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                {slot.minutes} min
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-
-                {/* Players without wave property (legacy data — only in split mode) */}
-                {mode === 'split' && quarter.slots.filter((s) => s.position !== 'GK' && !s.wave).length > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Other Players
-                    </p>
-                    {quarter.slots
-                      .filter((s) => s.position !== 'GK' && !s.wave)
-                      .map((slot) => {
-                        const currentIndex = getSlotIndex(slot);
-                        if (currentIndex < 0) return null;
-                        return (
-                          <div
-                            key={`${quarterNumber}-slot-${currentIndex}`}
-                            draggable={onDragStart && slot.position !== 'GK'}
-                            onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
-                            onDragOver={(e) => handleDragOver(e, quarterNumber, currentIndex)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, quarterNumber, currentIndex, slot)}
-                            onDragEnd={handleDragEndLocal}
-                            onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
-                            className={getSlotClasses(
-                              slot,
-                              `px-3 py-2 rounded-md mb-1 ${
-                                slot.position === 'DEF'
-                                  ? 'bg-blue-100 dark:bg-blue-900'
-                                  : 'bg-red-100 dark:bg-red-900'
-                              }`,
-                              quarterNumber,
-                              currentIndex
-                            )}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {slot.position}
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300">
-                                {slot.player}
-                                {isPlayerOverThreshold(slot.player) && (
-                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
-                                )}
-                              </span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                {slot.minutes} min
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
+                          );
+                        })}
+                      </div>
+                    );
+                  });
+                })()}
 
                 {/* Subs */}
                 {subs.length > 0 && (

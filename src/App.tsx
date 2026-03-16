@@ -710,6 +710,9 @@ function App() {
               setError('');
             }}
           />
+          <footer className="mt-8 text-center text-xs text-gray-400 dark:text-gray-500">
+            &copy; 2026 David Roche. All rights reserved.
+          </footer>
         </div>
       </div>
     );
@@ -1168,6 +1171,9 @@ function App() {
           </div>
         )}
       </div>
+      <footer className="mt-12 pb-4 text-center text-xs text-gray-400 dark:text-gray-500">
+        &copy; 2026 David Roche. All rights reserved.
+      </footer>
     </div>
   );
 }
