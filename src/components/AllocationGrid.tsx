@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import type { Allocation, Quarter, QuarterMode, PlayerSlot } from '../lib/types';
 import { getSubsForQuarter } from '../lib/allocator';
+import { CONFIG } from '../config/constants';
 
 interface AllocationGridProps {
   allocation: Allocation;
@@ -161,7 +162,7 @@ export function AllocationGrid({
   const meanMinutes = summaryValues.length > 0
     ? summaryValues.reduce((a, b) => a + b, 0) / summaryValues.length
     : 0;
-  const maxVariance = 5; // CONFIG.RULES.MAX_MINUTE_VARIANCE
+  const maxVariance = CONFIG.RULES.MAX_MINUTE_VARIANCE;
   const isPlayerOverThreshold = (playerName: string) => {
     const playerTotal = allocation.summary[playerName] ?? 0;
     return Math.abs(playerTotal - meanMinutes) > maxVariance;
@@ -193,7 +194,7 @@ export function AllocationGrid({
           const subPoint = firstWaveSlot?.minutes
             ?? allocation.subPoints?.[quarterNumber - 1]
             ?? 5;
-          const quarterDuration = 10;
+          const quarterDuration = CONFIG.QUARTER_DURATION;
 
           return (
             <div
@@ -216,7 +217,7 @@ export function AllocationGrid({
                             : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                         }`}
                       >
-                        Same team
+                        No subs
                       </button>
                       <button
                         onClick={() => onQuarterModeChange(quarterNumber, 'split')}
@@ -226,7 +227,7 @@ export function AllocationGrid({
                             : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                         }`}
                       >
-                        Make changes
+                        Sub halfway
                       </button>
                     </div>
                   )}
@@ -316,7 +317,7 @@ export function AllocationGrid({
                             Click to add goalkeeper
                           </span>
                           <span className="text-sm text-gray-600 dark:text-gray-400">
-                            10 min
+                            {CONFIG.QUARTER_DURATION} min
                           </span>
                         </div>
                       </div>

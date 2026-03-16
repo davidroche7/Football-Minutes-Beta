@@ -415,85 +415,95 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
         )}
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <div>
-          <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-            Removed Players
-          </h3>
-          {isLoading ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
-          ) : removedPlayers.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400">No removed players.</p>
-          ) : (
-            <ul className="space-y-2">
-              {removedPlayers.map((player) => {
-                const disabling = actionTargetId === player.id;
-                return (
-                  <li
-                    key={player.id}
-                    className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{player.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Removed{' '}
-                        {player.removedAt ? new Date(player.removedAt).toLocaleString() : '—'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleRestorePlayer(player.id)}
-                      disabled={disabling}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-400 dark:text-blue-300 dark:hover:text-blue-200"
+      <details className="mt-8">
+        <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          Roster history &amp; removed players
+          {removedPlayers.length > 0 && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {removedPlayers.length} removed
+            </span>
+          )}
+        </summary>
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Removed Players
+            </h3>
+            {isLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+            ) : removedPlayers.length === 0 ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">No removed players.</p>
+            ) : (
+              <ul className="space-y-2">
+                {removedPlayers.map((player) => {
+                  const disabling = actionTargetId === player.id;
+                  return (
+                    <li
+                      key={player.id}
+                      className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
                     >
-                      {disabling ? 'Restoring…' : 'Restore'}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{player.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Removed{' '}
+                          {player.removedAt ? new Date(player.removedAt).toLocaleString() : '—'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRestorePlayer(player.id)}
+                        disabled={disabling}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-400 dark:text-blue-300 dark:hover:text-blue-200"
+                      >
+                        {disabling ? 'Restoring…' : 'Restore'}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
-        <div>
-          <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-            Roster Changes
-          </h3>
-          {isAuditLoading ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading audit log…</p>
-          ) : auditEntries.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Roster history will appear here once changes are made.
-            </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {auditEntries
-                .slice()
-                .reverse()
-                .map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/50"
-                  >
-                    <p className="text-gray-800 dark:text-gray-200">
-                      <span className="font-semibold">{entry.playerName}</span> was{' '}
-                      <span className="font-semibold">
-                        {entry.action === 'added'
-                          ? 'added'
-                          : entry.action === 'removed'
-                          ? 'removed'
-                          : 'restored'}
-                      </span>{' '}
-                      by {entry.actor}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(entry.timestamp).toLocaleString()}
-                    </p>
-                  </li>
-                ))}
-            </ul>
-          )}
+          <div>
+            <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Roster Changes
+            </h3>
+            {isAuditLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading audit log…</p>
+            ) : auditEntries.length === 0 ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Roster history will appear here once changes are made.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {auditEntries
+                  .slice()
+                  .reverse()
+                  .map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/50"
+                    >
+                      <p className="text-gray-800 dark:text-gray-200">
+                        <span className="font-semibold">{entry.playerName}</span> was{' '}
+                        <span className="font-semibold">
+                          {entry.action === 'added'
+                            ? 'added'
+                            : entry.action === 'removed'
+                            ? 'removed'
+                            : 'restored'}
+                        </span>{' '}
+                        by {entry.actor}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
         </div>
-      </div>
+      </details>
     </div>
   );
 }

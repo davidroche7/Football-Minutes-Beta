@@ -51,14 +51,33 @@ vi.mock('../lib/roster', () => ({
 import { SeasonStatsView } from './SeasonStatsView';
 import type { MatchRecord } from '../lib/persistence';
 
+const buildQuarters = (): MatchRecord['allocation']['quarters'] => {
+  const players = ['Alex', 'Blake', 'Casey', 'Dana', 'Ellis', 'Frankie', 'Gerry', 'Harper', 'Ira'];
+  // Build 4 quarters with split mode (1 GK + 4 first-wave + 4 second-wave = 9 slots)
+  return [1, 2, 3, 4].map((q) => ({
+    quarter: q as 1 | 2 | 3 | 4,
+    slots: [
+      { player: players[0], position: 'GK' as const, minutes: 10 },
+      { player: players[1], position: 'DEF' as const, minutes: 5, wave: 'first' as const },
+      { player: players[2], position: 'DEF' as const, minutes: 5, wave: 'first' as const },
+      { player: players[3], position: 'ATT' as const, minutes: 5, wave: 'first' as const },
+      { player: players[4], position: 'ATT' as const, minutes: 5, wave: 'first' as const },
+      { player: players[5], position: 'DEF' as const, minutes: 5, wave: 'second' as const },
+      { player: players[6], position: 'DEF' as const, minutes: 5, wave: 'second' as const },
+      { player: players[7], position: 'ATT' as const, minutes: 5, wave: 'second' as const },
+      { player: players[8], position: 'ATT' as const, minutes: 5, wave: 'second' as const },
+    ],
+  }));
+};
+
 const buildMatch = (overrides: Partial<MatchRecord> = {}): MatchRecord => ({
   id: 'match-1',
   date: '2024-03-01',
   opponent: 'Rivals FC',
-  players: ['Alex', 'Blake'],
+  players: ['Alex', 'Blake', 'Casey', 'Dana', 'Ellis', 'Frankie', 'Gerry', 'Harper', 'Ira'],
   allocation: {
-    quarters: [],
-    summary: { Alex: 20, Blake: 20 },
+    quarters: buildQuarters(),
+    summary: { Alex: 40, Blake: 20, Casey: 20, Dana: 20, Ellis: 20, Frankie: 20, Gerry: 20, Harper: 20, Ira: 20 },
     warnings: [],
   },
   createdAt: '2024-03-01T10:00:00Z',
@@ -88,9 +107,6 @@ describe('SeasonStatsView', () => {
   // "Removed Players" section. If this feature is needed, it should be added to the component first.
 
   it('displays match result metadata when available', async () => {
-    mockListRoster.mockResolvedValueOnce([]);
-    mockGetRosterAudit.mockResolvedValueOnce([]);
-
     const match = buildMatch({
       result: {
         venue: 'Home',
@@ -106,8 +122,6 @@ describe('SeasonStatsView', () => {
     render(
       <SeasonStatsView matches={[match]} onMatchesChange={() => {}} currentUser="coach" />
     );
-
-    await waitFor(() => expect(mockListRoster).toHaveBeenCalled());
 
     // Verify basic match metadata is displayed
     expect(await screen.findByText('vs Rivals FC')).toBeInTheDocument();

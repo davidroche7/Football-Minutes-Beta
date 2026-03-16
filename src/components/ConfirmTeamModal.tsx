@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Allocation } from '../lib/types';
+import { CONFIG } from '../config/constants';
 
 interface ConfirmTeamModalProps {
   isOpen: boolean;
@@ -193,7 +194,7 @@ export function ConfirmTeamModal({
             const mean = summaryValues.length > 0
               ? summaryValues.reduce((a, b) => a + b, 0) / summaryValues.length
               : 0;
-            const maxVar = 5;
+            const maxVar = CONFIG.RULES.MAX_MINUTE_VARIANCE;
             const flagged = players.filter((p) => {
               const mins = allocation.summary[p] ?? 0;
               return Math.abs(mins - mean) > maxVar;

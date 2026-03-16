@@ -458,6 +458,28 @@ export function validateAllocation(allocation: Allocation): string[] {
         `Quarter ${q.quarter}: Expected ${config.POSITIONS.ATT * positionMultiplier} ATT slots, got ${attCount}`
       );
     }
+
+    // Full-mode structural checks
+    if (mode === 'full') {
+      const expectedSlots = config.POSITIONS.GK + config.POSITIONS.DEF + config.POSITIONS.ATT;
+      if (q.slots.length !== expectedSlots) {
+        errors.push(
+          `Quarter ${q.quarter} (full mode): Expected ${expectedSlots} slots, got ${q.slots.length}`
+        );
+      }
+      const slotsWithWave = q.slots.filter((s) => s.position !== 'GK' && s.wave !== undefined);
+      if (slotsWithWave.length > 0) {
+        errors.push(
+          `Quarter ${q.quarter} (full mode): ${slotsWithWave.length} outfield slot(s) have a wave property`
+        );
+      }
+      const wrongMinutes = q.slots.filter((s) => s.minutes !== config.QUARTER_DURATION);
+      if (wrongMinutes.length > 0) {
+        errors.push(
+          `Quarter ${q.quarter} (full mode): ${wrongMinutes.length} slot(s) not set to ${config.QUARTER_DURATION} minutes`
+        );
+      }
+    }
   });
 
   // Check GK players have outfield time (if configured)

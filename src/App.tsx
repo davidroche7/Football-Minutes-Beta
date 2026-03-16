@@ -22,6 +22,7 @@ import {
 import { getRules, persistRules, resetRules } from './lib/rules';
 import { clearSession, loadStoredSession, storeSession, type AuthSession } from './lib/auth';
 import { ensureSeedData } from './lib/bootstrap';
+import { CONFIG } from './config/constants';
 import { fetchTeamStats, type TeamStats } from './lib/statsClient';
 import type { Allocation, Quarter, QuarterMode, PlayerSlot } from './lib/types';
 import type { MatchRecord } from './lib/persistence';
@@ -306,7 +307,7 @@ function App() {
 
       // Paired wave balancing: when minutes change, adjust opposite-wave slots
       if (updates.minutes !== undefined) {
-        const quarterDuration = 10;
+        const quarterDuration = CONFIG.QUARTER_DURATION;
         const changedSlot = updatedAllocation.quarters.find((q) => q.quarter === quarter)?.slots[slotIndex];
         if (changedSlot && changedSlot.wave) {
           const oppositeWave = changedSlot.wave === 'first' ? 'second' : 'first';
@@ -347,7 +348,7 @@ function App() {
     if (!allocation) return;
 
     // Update slot minutes in the affected quarter without full regeneration
-    const quarterDuration = 10;
+    const quarterDuration = CONFIG.QUARTER_DURATION;
     const newQuarters = allocation.quarters.map((q) => {
       if (q.quarter !== quarterNumber) return q;
       return {
@@ -383,7 +384,7 @@ function App() {
 
     if (!allocation) return;
 
-    const quarterDuration = 10;
+    const quarterDuration = CONFIG.QUARTER_DURATION;
     const currentQuarter = allocation.quarters.find((q) => q.quarter === quarterNumber);
     if (!currentQuarter) return;
 

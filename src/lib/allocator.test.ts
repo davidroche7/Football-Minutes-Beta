@@ -739,4 +739,41 @@ describe('allocator', () => {
       expect(breakdown[0]).toBe('10');
     });
   });
+
+  describe('validateAllocation full-mode structural checks', () => {
+    const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+    const fullModes: QuarterMode[] = ['full', 'full', 'full', 'full'];
+
+    it('rejects full-mode quarter with wave properties on outfield slots', () => {
+      const allocation = allocate(players, undefined, undefined, fullModes);
+      // Corrupt Q1: add wave to an outfield slot
+      const outfield = allocation.quarters[0]!.slots.find((s) => s.position !== 'GK');
+      outfield!.wave = 'first';
+      const errors = validateAllocation(allocation);
+      expect(errors.some((e) => e.includes('wave property'))).toBe(true);
+    });
+
+    it('rejects full-mode quarter with wrong minutes', () => {
+      const allocation = allocate(players, undefined, undefined, fullModes);
+      // Corrupt Q1: set an outfield slot to 5 minutes
+      const outfield = allocation.quarters[0]!.slots.find((s) => s.position !== 'GK');
+      outfield!.minutes = 5;
+      const errors = validateAllocation(allocation);
+      expect(errors.some((e) => e.includes('not set to 10 minutes'))).toBe(true);
+    });
+
+    it('rejects full-mode quarter with wrong slot count', () => {
+      const allocation = allocate(players, undefined, undefined, fullModes);
+      // Corrupt Q1: add extra slot
+      allocation.quarters[0]!.slots.push({ player: 'Extra', position: 'DEF', minutes: 10 });
+      const errors = validateAllocation(allocation);
+      expect(errors.some((e) => e.includes('Expected 5 slots'))).toBe(true);
+    });
+
+    it('passes validation for correctly formed full-mode quarter', () => {
+      const allocation = allocate(players, undefined, undefined, fullModes);
+      const errors = validateAllocation(allocation);
+      expect(errors).toEqual([]);
+    });
+  });
 });

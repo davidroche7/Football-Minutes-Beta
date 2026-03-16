@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Quarter, QuarterMode, PlayerSlot, Wave } from '../lib/types';
+import { CONFIG } from '../config/constants';
 
 interface EditModalProps {
   isOpen: boolean;
@@ -55,7 +56,7 @@ export function EditModal({
   };
 
   const handleMinutesChange = (newMinutes: number) => {
-    if (newMinutes < 1 || newMinutes > 10) return;
+    if (newMinutes < 1 || newMinutes > CONFIG.QUARTER_DURATION) return;
     setSelectedMinutes(newMinutes);
     if (onSaveProperties) {
       onSaveProperties(quarter, slotIndex, { minutes: newMinutes });
@@ -105,7 +106,7 @@ export function EditModal({
                     : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
                 }`}
               >
-                Second Wave ({subPoint}-10 min)
+                Second Wave ({subPoint}-{CONFIG.QUARTER_DURATION} min)
               </button>
             </div>
           </div>
@@ -130,7 +131,7 @@ export function EditModal({
               </span>
               <button
                 onClick={() => handleMinutesChange(selectedMinutes + 1)}
-                disabled={selectedMinutes >= 10}
+                disabled={selectedMinutes >= CONFIG.QUARTER_DURATION}
                 className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-lg font-medium"
               >
                 +
