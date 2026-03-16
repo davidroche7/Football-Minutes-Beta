@@ -1,5 +1,6 @@
 import { useState, type DragEvent } from 'react';
 import type { Allocation, Quarter, QuarterMode, PlayerSlot } from '../lib/types';
+import { POSITION_DISPLAY, POSITION_COLOUR } from '../lib/types';
 import { getSubsForQuarter } from '../lib/allocator';
 import { CONFIG } from '../config/constants';
 
@@ -346,8 +347,8 @@ export function AllocationGrid({
                         {slots.map((slot) => {
                           const currentIndex = getSlotIndex(slot);
                           if (currentIndex < 0) return null;
-                          const colourDef = variant === 'secondary' ? 'bg-blue-50 dark:bg-blue-950' : 'bg-blue-100 dark:bg-blue-900';
-                          const colourAtt = variant === 'secondary' ? 'bg-red-50 dark:bg-red-950' : 'bg-red-100 dark:bg-red-900';
+                          const colours = POSITION_COLOUR[slot.position];
+                          const bgClass = variant === 'secondary' ? colours.secondary : colours.primary;
                           return (
                             <div
                               key={`${quarterNumber}-slot-${currentIndex}`}
@@ -360,14 +361,14 @@ export function AllocationGrid({
                               onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
                               className={getSlotClasses(
                                 slot,
-                                `px-3 py-2 rounded-md mb-1 ${slot.position === 'DEF' ? colourDef : colourAtt}`,
+                                `px-3 py-2 rounded-md mb-1 ${bgClass}`,
                                 quarterNumber,
                                 currentIndex
                               )}
                             >
                               <div className="flex justify-between items-center">
                                 <span className="font-medium text-gray-900 dark:text-white">
-                                  {slot.position}
+                                  {POSITION_DISPLAY[slot.position]}
                                 </span>
                                 <span className="text-gray-700 dark:text-gray-300">
                                   {slot.player}

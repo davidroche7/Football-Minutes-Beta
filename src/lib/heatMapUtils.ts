@@ -1,4 +1,3 @@
-import type { Position } from './types';
 import type { MatchRecord } from './persistence';
 
 /**
@@ -7,7 +6,8 @@ import type { MatchRecord } from './persistence';
 export interface PositionDistribution {
   GK: number; // Percentage
   DEF: number; // Percentage
-  ATT: number; // Percentage
+  MID: number; // Percentage
+  FWD: number; // Percentage
   totalMinutes: number;
 }
 
@@ -18,39 +18,38 @@ export function calculatePlayerPositionDistribution(
   playerName: string,
   matches: MatchRecord[]
 ): PositionDistribution {
-  const minutesByPosition: Record<Position, number> = {
-    GK: 0,
-    DEF: 0,
-    ATT: 0,
-  };
+  // Count minutes per position — merge legacy ATT into FWD
+  const minutesByPosition = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
 
-  // Loop through all matches and quarters to count minutes per position
   matches.forEach((match) => {
     match.allocation.quarters.forEach((quarter) => {
       quarter.slots.forEach((slot) => {
         if (slot.player === playerName) {
-          minutesByPosition[slot.position] += slot.minutes;
+          if (slot.position === 'ATT' || slot.position === 'FWD') {
+            minutesByPosition.FWD += slot.minutes;
+          } else if (slot.position === 'MID') {
+            minutesByPosition.MID += slot.minutes;
+          } else if (slot.position === 'DEF') {
+            minutesByPosition.DEF += slot.minutes;
+          } else {
+            minutesByPosition.GK += slot.minutes;
+          }
         }
       });
     });
   });
 
-  const totalMinutes = minutesByPosition.GK + minutesByPosition.DEF + minutesByPosition.ATT;
+  const totalMinutes = minutesByPosition.GK + minutesByPosition.DEF + minutesByPosition.MID + minutesByPosition.FWD;
 
-  // Calculate percentages
   if (totalMinutes === 0) {
-    return {
-      GK: 0,
-      DEF: 0,
-      ATT: 0,
-      totalMinutes: 0,
-    };
+    return { GK: 0, DEF: 0, MID: 0, FWD: 0, totalMinutes: 0 };
   }
 
   return {
     GK: Math.round((minutesByPosition.GK / totalMinutes) * 100),
     DEF: Math.round((minutesByPosition.DEF / totalMinutes) * 100),
-    ATT: Math.round((minutesByPosition.ATT / totalMinutes) * 100),
+    MID: Math.round((minutesByPosition.MID / totalMinutes) * 100),
+    FWD: Math.round((minutesByPosition.FWD / totalMinutes) * 100),
     totalMinutes,
   };
 }

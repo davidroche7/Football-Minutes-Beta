@@ -82,11 +82,13 @@ describe('allocator', () => {
       allocation.quarters.forEach((q) => {
         const gkCount = q.slots.filter((s) => s.position === 'GK').length;
         const defCount = q.slots.filter((s) => s.position === 'DEF').length;
-        const attCount = q.slots.filter((s) => s.position === 'ATT').length;
+        const midCount = q.slots.filter((s) => s.position === 'MID').length;
+        const fwdCount = q.slots.filter((s) => s.position === 'FWD').length;
 
         expect(gkCount).toBe(1);
-        expect(defCount).toBe(4); // 2 first wave + 2 second wave
-        expect(attCount).toBe(4); // 2 first wave + 2 second wave
+        expect(defCount).toBe(2); // 1 first wave + 1 second wave
+        expect(midCount).toBe(2); // 1 first wave + 1 second wave
+        expect(fwdCount).toBe(4); // 2 first wave + 2 second wave
       });
     });
 

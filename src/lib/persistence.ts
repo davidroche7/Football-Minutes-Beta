@@ -92,7 +92,7 @@ interface ApiLineupSlot {
   id: string;
   quarterNumber: number;
   wave: 'FULL' | 'FIRST' | 'SECOND';
-  position: 'GK' | 'DEF' | 'ATT';
+  position: 'GK' | 'DEF' | 'MID' | 'FWD' | 'ATT';
   playerId: string;
   playerName: string;
   minutes: number;
@@ -438,7 +438,7 @@ const convertAllocationToSlots = (allocation: Allocation, idMap: Map<string, str
   const slots: Array<{
     quarterNumber: number;
     wave: 'FULL' | 'FIRST' | 'SECOND';
-    position: 'GK' | 'DEF' | 'ATT';
+    position: 'GK' | 'DEF' | 'MID' | 'FWD' | 'ATT';
     playerId: string;
     minutes: number;
     isSubstitution: boolean;

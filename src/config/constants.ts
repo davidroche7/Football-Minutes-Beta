@@ -44,10 +44,10 @@ export const CONFIG = computeConfig();
 
 export const getSlotsPerQuarter = (rulesConfig: RuleConfig = DEFAULT_RULES) => {
   const positions = rulesConfig.positions;
-  return positions.GK + positions.DEF * 2 + positions.ATT * 2;
+  return positions.GK + (positions.DEF + positions.MID + positions.FWD) * 2;
 };
 
 export const getPlayersPerQuarter = (rulesConfig: RuleConfig = DEFAULT_RULES) => {
   const positions = rulesConfig.positions;
-  return positions.GK + positions.DEF + positions.ATT;
+  return positions.GK + positions.DEF + positions.MID + positions.FWD;
 };

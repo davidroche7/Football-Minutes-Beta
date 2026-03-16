@@ -90,7 +90,7 @@ const convertMatch = (match: ImportedMatch): MatchRecord | null => {
                   const position = typeof slot?.position === 'string' ? slot.position.toUpperCase() : null;
                   const minutes = typeof slot?.minutes === 'number' ? slot.minutes : 10;
                   if (!player) return null;
-                  if (position !== 'GK' && position !== 'DEF' && position !== 'ATT') return null;
+                  if (position !== 'GK' && position !== 'DEF' && position !== 'MID' && position !== 'FWD' && position !== 'ATT') return null;
                   return {
                     player,
                     position,

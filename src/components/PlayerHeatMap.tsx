@@ -40,7 +40,8 @@ export function PlayerHeatMap({ matches }: PlayerHeatMapProps) {
 
   const gkHeat = distribution ? getHeatMapColor(distribution.GK) : null;
   const defHeat = distribution ? getHeatMapColor(distribution.DEF) : null;
-  const attHeat = distribution ? getHeatMapColor(distribution.ATT) : null;
+  const midHeat = distribution ? getHeatMapColor(distribution.MID) : null;
+  const fwdHeat = distribution ? getHeatMapColor(distribution.FWD) : null;
 
   return (
     <div className="w-full rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -95,18 +96,25 @@ export function PlayerHeatMap({ matches }: PlayerHeatMapProps) {
                   <stop offset="100%" stopColor={gkHeat?.color || '#ef4444'} stopOpacity="0" />
                 </radialGradient>
 
-                {/* Radial gradient for DEF zone - positioned at midfield */}
-                <radialGradient id="def-gradient" cx="50%" cy="50%" r="95%">
+                {/* Radial gradient for DEF zone */}
+                <radialGradient id="def-gradient" cx="50%" cy="35%" r="90%">
                   <stop offset="0%" stopColor={defHeat?.color || '#ef4444'} stopOpacity={defHeat?.opacity || 0} />
                   <stop offset="50%" stopColor={defHeat?.color || '#ef4444'} stopOpacity={(defHeat?.opacity || 0) * 0.3} />
                   <stop offset="100%" stopColor={defHeat?.color || '#ef4444'} stopOpacity="0" />
                 </radialGradient>
 
-                {/* Radial gradient for ATT zone - positioned at attacking penalty spot */}
-                <radialGradient id="att-gradient" cx="50%" cy="85%" r="100%">
-                  <stop offset="0%" stopColor={attHeat?.color || '#ef4444'} stopOpacity={attHeat?.opacity || 0} />
-                  <stop offset="50%" stopColor={attHeat?.color || '#ef4444'} stopOpacity={(attHeat?.opacity || 0) * 0.3} />
-                  <stop offset="100%" stopColor={attHeat?.color || '#ef4444'} stopOpacity="0" />
+                {/* Radial gradient for MID zone - positioned at centre */}
+                <radialGradient id="mid-gradient" cx="50%" cy="50%" r="90%">
+                  <stop offset="0%" stopColor={midHeat?.color || '#ef4444'} stopOpacity={midHeat?.opacity || 0} />
+                  <stop offset="50%" stopColor={midHeat?.color || '#ef4444'} stopOpacity={(midHeat?.opacity || 0) * 0.3} />
+                  <stop offset="100%" stopColor={midHeat?.color || '#ef4444'} stopOpacity="0" />
+                </radialGradient>
+
+                {/* Radial gradient for FWD zone - positioned at attacking end */}
+                <radialGradient id="fwd-gradient" cx="50%" cy="85%" r="100%">
+                  <stop offset="0%" stopColor={fwdHeat?.color || '#ef4444'} stopOpacity={fwdHeat?.opacity || 0} />
+                  <stop offset="50%" stopColor={fwdHeat?.color || '#ef4444'} stopOpacity={(fwdHeat?.opacity || 0) * 0.3} />
+                  <stop offset="100%" stopColor={fwdHeat?.color || '#ef4444'} stopOpacity="0" />
                 </radialGradient>
               </defs>
 
@@ -197,71 +205,70 @@ export function PlayerHeatMap({ matches }: PlayerHeatMapProps) {
                 <rect x="10" y="10" width="380" height="250" fill="url(#gk-gradient)" />
               )}
 
-              {/* DEF zone heat - full height to connect GK and ATT */}
+              {/* DEF zone heat */}
               {defHeat && defHeat.opacity > 0 && (
-                <rect x="10" y="10" width="380" height="580" fill="url(#def-gradient)" />
+                <rect x="10" y="10" width="380" height="300" fill="url(#def-gradient)" />
               )}
 
-              {/* ATT zone heat - extended up to connect with DEF */}
-              {attHeat && attHeat.opacity > 0 && (
-                <rect x="10" y="340" width="380" height="250" fill="url(#att-gradient)" />
+              {/* MID zone heat - centre of pitch */}
+              {midHeat && midHeat.opacity > 0 && (
+                <rect x="10" y="150" width="380" height="300" fill="url(#mid-gradient)" />
+              )}
+
+              {/* FWD zone heat - attacking end */}
+              {fwdHeat && fwdHeat.opacity > 0 && (
+                <rect x="10" y="340" width="380" height="250" fill="url(#fwd-gradient)" />
               )}
             </svg>
           </div>
 
           {/* Summary Stats */}
-          <div className="grid w-full max-w-xl grid-cols-3 gap-4 text-center">
-            <div className="rounded-md bg-gradient-to-br from-yellow-100 to-orange-100 px-3 py-4 dark:from-yellow-900/30 dark:to-orange-900/30">
+          <div className="grid w-full max-w-xl grid-cols-4 gap-3 text-center">
+            <div className="rounded-md bg-gradient-to-br from-yellow-100 to-orange-100 px-2 py-3 dark:from-yellow-900/30 dark:to-orange-900/30">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
                 Goalkeeper
               </p>
-              <p className="mt-1 text-3xl font-bold text-yellow-700 dark:text-yellow-300">
+              <p className="mt-1 text-2xl font-bold text-yellow-700 dark:text-yellow-300">
                 {distribution.GK}%
               </p>
               <div className="mt-2 flex items-center justify-center gap-2">
-                <div
-                  className="h-3 w-20 rounded-full"
-                  style={{
-                    backgroundColor: gkHeat?.color || '#ef4444',
-                    opacity: gkHeat?.opacity || 0,
-                  }}
-                />
+                <div className="h-3 w-16 rounded-full" style={{ backgroundColor: gkHeat?.color || '#ef4444', opacity: gkHeat?.opacity || 0 }} />
               </div>
             </div>
 
-            <div className="rounded-md bg-gradient-to-br from-blue-100 to-indigo-100 px-3 py-4 dark:from-blue-900/30 dark:to-indigo-900/30">
+            <div className="rounded-md bg-gradient-to-br from-blue-100 to-indigo-100 px-2 py-3 dark:from-blue-900/30 dark:to-indigo-900/30">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
                 Defender
               </p>
-              <p className="mt-1 text-3xl font-bold text-blue-700 dark:text-blue-300">
+              <p className="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">
                 {distribution.DEF}%
               </p>
               <div className="mt-2 flex items-center justify-center gap-2">
-                <div
-                  className="h-3 w-20 rounded-full"
-                  style={{
-                    backgroundColor: defHeat?.color || '#ef4444',
-                    opacity: defHeat?.opacity || 0,
-                  }}
-                />
+                <div className="h-3 w-16 rounded-full" style={{ backgroundColor: defHeat?.color || '#ef4444', opacity: defHeat?.opacity || 0 }} />
               </div>
             </div>
 
-            <div className="rounded-md bg-gradient-to-br from-red-100 to-pink-100 px-3 py-4 dark:from-red-900/30 dark:to-pink-900/30">
+            <div className="rounded-md bg-gradient-to-br from-green-100 to-emerald-100 px-2 py-3 dark:from-green-900/30 dark:to-emerald-900/30">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
-                Attacker
+                Midfielder
               </p>
-              <p className="mt-1 text-3xl font-bold text-red-700 dark:text-red-300">
-                {distribution.ATT}%
+              <p className="mt-1 text-2xl font-bold text-green-700 dark:text-green-300">
+                {distribution.MID}%
               </p>
               <div className="mt-2 flex items-center justify-center gap-2">
-                <div
-                  className="h-3 w-20 rounded-full"
-                  style={{
-                    backgroundColor: attHeat?.color || '#ef4444',
-                    opacity: attHeat?.opacity || 0,
-                  }}
-                />
+                <div className="h-3 w-16 rounded-full" style={{ backgroundColor: midHeat?.color || '#ef4444', opacity: midHeat?.opacity || 0 }} />
+              </div>
+            </div>
+
+            <div className="rounded-md bg-gradient-to-br from-red-100 to-pink-100 px-2 py-3 dark:from-red-900/30 dark:to-pink-900/30">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400">
+                Forward
+              </p>
+              <p className="mt-1 text-2xl font-bold text-red-700 dark:text-red-300">
+                {distribution.FWD}%
+              </p>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <div className="h-3 w-16 rounded-full" style={{ backgroundColor: fwdHeat?.color || '#ef4444', opacity: fwdHeat?.opacity || 0 }} />
               </div>
             </div>
           </div>

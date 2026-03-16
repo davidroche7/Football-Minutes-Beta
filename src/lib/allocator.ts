@@ -3,6 +3,7 @@
  */
 
 import { CONFIG } from '../config/constants';
+import type { Position } from './types';
 import type {
   Allocation,
   Quarter,
@@ -171,6 +172,17 @@ function performAllocationAttempt(
 }
 
 /**
+ * Build the outfield position sequence from CONFIG — e.g. ['DEF', 'MID', 'FWD', 'FWD']
+ */
+function getOutfieldPositionSequence(): Position[] {
+  const seq: Position[] = [];
+  for (let i = 0; i < CONFIG.POSITIONS.DEF; i++) seq.push('DEF');
+  for (let i = 0; i < CONFIG.POSITIONS.MID; i++) seq.push('MID');
+  for (let i = 0; i < CONFIG.POSITIONS.FWD; i++) seq.push('FWD');
+  return seq;
+}
+
+/**
  * Allocate a single quarter
  */
 function allocateQuarter(
@@ -195,12 +207,13 @@ function allocateQuarter(
   playerMinutes.set(gk, (playerMinutes.get(gk) || 0) + CONFIG.TIME_BLOCKS.GK_FULL);
   playerGKCount.set(gk, (playerGKCount.get(gk) || 0) + 1);
 
-  // 2. Assign first wave (0-5 minutes): 2 DEF + 2 ATT
+  // 2. Assign first wave outfield positions
+  const outfieldCount = CONFIG.POSITIONS.DEF + CONFIG.POSITIONS.MID + CONFIG.POSITIONS.FWD;
   const firstWave = selectOutfieldWave(
     players,
     playerMinutes,
     usedThisQuarter,
-    4,
+    outfieldCount,
     true, // Allow reuse if needed
     playerGKCount,
     playerOutfieldPrimaryWaveCount,
@@ -209,27 +222,21 @@ function allocateQuarter(
     gk
   );
 
-  // Assign 2 DEF, 2 ATT
-  firstWave.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: waveDurations.first, wave: 'first' });
+  // Assign outfield positions from config sequence
+  const posSeq = getOutfieldPositionSequence();
+  firstWave.forEach((p, i) => {
+    slots.push({ player: p, position: posSeq[i]!, minutes: waveDurations.first, wave: 'first' });
     playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.first);
     playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
     usedThisQuarter.add(p);
   });
 
-  firstWave.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: waveDurations.first, wave: 'first' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.first);
-    playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
-    usedThisQuarter.add(p);
-  });
-
-  // 3. Assign second wave (5-10 minutes): 2 DEF + 2 ATT
+  // 3. Assign second wave (5-10 minutes)
   const secondWave = selectOutfieldWave(
     players,
     playerMinutes,
     usedThisQuarter,
-    4,
+    posSeq.length,
     true, // Allow reuse if needed
     undefined,
     undefined,
@@ -238,13 +245,8 @@ function allocateQuarter(
     gk
   );
 
-  secondWave.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: waveDurations.second, wave: 'second' });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.second);
-  });
-
-  secondWave.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: waveDurations.second, wave: 'second' });
+  secondWave.forEach((p, i) => {
+    slots.push({ player: p, position: posSeq[i]!, minutes: waveDurations.second, wave: 'second' });
     playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.second);
   });
 
@@ -252,8 +254,8 @@ function allocateQuarter(
 }
 
 /**
- * Allocate a full quarter — same 5 players for the entire 10 minutes, no wave split.
- * Produces 1 GK (10 min) + 2 DEF (10 min) + 2 ATT (10 min), all without wave property.
+ * Allocate a full quarter — same players for the entire quarter, no wave split.
+ * Produces 1 GK + outfield positions (DEF/MID/FWD) from config, all full duration.
  */
 function allocateFullQuarter(
   _quarter: Quarter,
@@ -276,12 +278,13 @@ function allocateFullQuarter(
   playerMinutes.set(gk, (playerMinutes.get(gk) || 0) + CONFIG.TIME_BLOCKS.GK_FULL);
   playerGKCount.set(gk, (playerGKCount.get(gk) || 0) + 1);
 
-  // 2. Assign 4 outfield players for full quarter (no wave, 10 min each)
+  // 2. Assign outfield players for full quarter (no wave, full duration each)
+  const posSeq = getOutfieldPositionSequence();
   const outfield = selectOutfieldWave(
     players,
     playerMinutes,
     usedThisQuarter,
-    4,
+    posSeq.length,
     true,
     playerGKCount,
     playerOutfieldPrimaryWaveCount,
@@ -290,15 +293,8 @@ function allocateFullQuarter(
     gk
   );
 
-  outfield.slice(0, 2).forEach((p) => {
-    slots.push({ player: p, position: 'DEF', minutes: CONFIG.QUARTER_DURATION });
-    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.QUARTER_DURATION);
-    playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
-    usedThisQuarter.add(p);
-  });
-
-  outfield.slice(2, 4).forEach((p) => {
-    slots.push({ player: p, position: 'ATT', minutes: CONFIG.QUARTER_DURATION });
+  outfield.forEach((p, i) => {
+    slots.push({ player: p, position: posSeq[i]!, minutes: CONFIG.QUARTER_DURATION });
     playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.QUARTER_DURATION);
     playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
     usedThisQuarter.add(p);
@@ -443,7 +439,7 @@ export function validateAllocation(allocation: Allocation): string[] {
       errors.push(`Quarter ${q.quarter}: Expected ${config.POSITIONS.GK} GK, got ${gkCount}`);
     }
 
-    // Count DEF positions
+    // Count outfield positions — accept legacy ATT as equivalent to FWD
     const defCount = q.slots.filter((s) => s.position === 'DEF').length;
     if (defCount !== config.POSITIONS.DEF * positionMultiplier) {
       errors.push(
@@ -451,17 +447,32 @@ export function validateAllocation(allocation: Allocation): string[] {
       );
     }
 
-    // Count ATT positions
-    const attCount = q.slots.filter((s) => s.position === 'ATT').length;
-    if (attCount !== config.POSITIONS.ATT * positionMultiplier) {
-      errors.push(
-        `Quarter ${q.quarter}: Expected ${config.POSITIONS.ATT * positionMultiplier} ATT slots, got ${attCount}`
-      );
+    const midCount = q.slots.filter((s) => s.position === 'MID').length;
+    if (midCount !== config.POSITIONS.MID * positionMultiplier) {
+      // Only flag if this is a new-style allocation (has MID or FWD slots)
+      const hasNewPositions = q.slots.some((s) => s.position === 'MID' || s.position === 'FWD');
+      if (hasNewPositions) {
+        errors.push(
+          `Quarter ${q.quarter}: Expected ${config.POSITIONS.MID * positionMultiplier} MID slots, got ${midCount}`
+        );
+      }
+    }
+
+    // FWD count — legacy ATT counts as FWD
+    const fwdCount = q.slots.filter((s) => s.position === 'FWD' || s.position === 'ATT').length;
+    if (fwdCount !== config.POSITIONS.FWD * positionMultiplier) {
+      // Only flag if this is a new-style allocation
+      const hasNewPositions = q.slots.some((s) => s.position === 'MID' || s.position === 'FWD');
+      if (hasNewPositions) {
+        errors.push(
+          `Quarter ${q.quarter}: Expected ${config.POSITIONS.FWD * positionMultiplier} FWD slots, got ${fwdCount}`
+        );
+      }
     }
 
     // Full-mode structural checks
     if (mode === 'full') {
-      const expectedSlots = config.POSITIONS.GK + config.POSITIONS.DEF + config.POSITIONS.ATT;
+      const expectedSlots = config.POSITIONS.GK + config.POSITIONS.DEF + config.POSITIONS.MID + config.POSITIONS.FWD;
       if (q.slots.length !== expectedSlots) {
         errors.push(
           `Quarter ${q.quarter} (full mode): Expected ${expectedSlots} slots, got ${q.slots.length}`

@@ -1589,7 +1589,7 @@ function normaliseQuarter(quarter: LegacyQuarter, index: number, rules: RuleConf
           const minutes = typeof slot.minutes === 'number' && slot.minutes > 0 ? slot.minutes : rules.quarterDuration;
           return { player, position, minutes };
         })
-        .filter((slot): slot is { player: string; position: 'GK' | 'DEF' | 'ATT'; minutes: number } => Boolean(slot))
+        .filter((slot): slot is { player: string; position: 'GK' | 'DEF' | 'MID' | 'FWD' | 'ATT'; minutes: number } => Boolean(slot))
     : [];
 
   const substitutes = normaliseStringArray(quarter.substitutes);
@@ -1683,11 +1683,13 @@ function normaliseStringArray(value: unknown): string[] {
   return [];
 }
 
-function normalisePosition(value: unknown): 'GK' | 'DEF' | 'ATT' | null {
+function normalisePosition(value: unknown): 'GK' | 'DEF' | 'MID' | 'FWD' | 'ATT' | null {
   if (!value) return null;
   const upper = String(value).trim().toUpperCase();
   if (upper === 'GK') return 'GK';
   if (upper === 'D' || upper === 'DEF') return 'DEF';
+  if (upper === 'M' || upper === 'MID') return 'MID';
+  if (upper === 'FWD') return 'FWD';
   if (upper === 'F' || upper === 'ATT') return 'ATT';
   return null;
 }

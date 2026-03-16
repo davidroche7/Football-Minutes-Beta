@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Quarter, QuarterMode, PlayerSlot, Wave } from '../lib/types';
+import { POSITION_DISPLAY } from '../lib/types';
 import { CONFIG } from '../config/constants';
 
 interface EditModalProps {
@@ -73,7 +74,7 @@ export function EditModal({
         <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-md">
           <p className="text-sm text-gray-600 dark:text-gray-400">Quarter {quarter}</p>
           <p className="text-lg font-semibold text-gray-900 dark:text-white">
-            {slot.position} - {selectedMinutes} minutes
+            {POSITION_DISPLAY[slot.position]} - {selectedMinutes} minutes
             {selectedWave && ` (${selectedWave} wave)`}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">

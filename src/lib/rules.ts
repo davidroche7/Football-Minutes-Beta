@@ -12,7 +12,9 @@ export function getRules(): RuleConfig {
   }
 
   try {
-    const parsed = JSON.parse(override) as Partial<RuleConfig>;
+    const parsed = JSON.parse(override) as Partial<RuleConfig> & { positions?: Partial<RuleConfig['positions']> & { ATT?: number } };
+    // Migrate legacy ATT → FWD: if stored rules have ATT but no FWD, map ATT to FWD
+    const legacyATT = (parsed.positions as Record<string, number> | undefined)?.ATT;
     return {
       quarters: parsed.quarters ?? DEFAULT_RULES.quarters,
       quarterDuration: parsed.quarterDuration ?? DEFAULT_RULES.quarterDuration,
@@ -23,7 +25,8 @@ export function getRules(): RuleConfig {
       positions: {
         GK: parsed.positions?.GK ?? DEFAULT_RULES.positions.GK,
         DEF: parsed.positions?.DEF ?? DEFAULT_RULES.positions.DEF,
-        ATT: parsed.positions?.ATT ?? DEFAULT_RULES.positions.ATT,
+        MID: parsed.positions?.MID ?? DEFAULT_RULES.positions.MID,
+        FWD: parsed.positions?.FWD ?? (legacyATT != null ? legacyATT : DEFAULT_RULES.positions.FWD),
       },
       fairness: {
         maxVariance: parsed.fairness?.maxVariance ?? DEFAULT_RULES.fairness.maxVariance,

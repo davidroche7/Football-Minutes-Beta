@@ -8,7 +8,8 @@ export interface RuleConfig {
   positions: {
     GK: number;
     DEF: number;
-    ATT: number;
+    MID: number;
+    FWD: number;
   };
   fairness: {
     maxVariance: number;
@@ -25,8 +26,9 @@ export const DEFAULT_RULES: RuleConfig = {
   },
   positions: {
     GK: 1,
-    DEF: 2,
-    ATT: 2,
+    DEF: 1,
+    MID: 1,
+    FWD: 2,
   },
   fairness: {
     maxVariance: 5,

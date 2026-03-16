@@ -2,8 +2,26 @@
  * Type definitions for football lineup allocation
  */
 
-/** Position on the field */
-export type Position = 'GK' | 'DEF' | 'ATT';
+/** Position on the field (ATT is legacy — kept for stored data compatibility) */
+export type Position = 'GK' | 'DEF' | 'MID' | 'FWD' | 'ATT';
+
+/** Display name for a position — maps legacy ATT to FWD */
+export const POSITION_DISPLAY: Record<Position, string> = {
+  GK: 'GK',
+  DEF: 'DEF',
+  MID: 'MID',
+  FWD: 'FWD',
+  ATT: 'FWD',
+};
+
+/** Slot colour class for a position (primary/secondary variant for wave shading) */
+export const POSITION_COLOUR: Record<Position, { primary: string; secondary: string }> = {
+  GK: { primary: 'bg-yellow-100 dark:bg-yellow-900', secondary: 'bg-yellow-100 dark:bg-yellow-900' },
+  DEF: { primary: 'bg-blue-100 dark:bg-blue-900', secondary: 'bg-blue-50 dark:bg-blue-950' },
+  MID: { primary: 'bg-green-100 dark:bg-green-900', secondary: 'bg-green-50 dark:bg-green-950' },
+  FWD: { primary: 'bg-red-100 dark:bg-red-900', secondary: 'bg-red-50 dark:bg-red-950' },
+  ATT: { primary: 'bg-red-100 dark:bg-red-900', secondary: 'bg-red-50 dark:bg-red-950' },
+};
 
 /** Time block a player can be assigned (in minutes) */
 export type TimeBlock = number;
