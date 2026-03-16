@@ -1,30 +1,38 @@
 # Tech & Product Debt Register
 
 _Generated 2026-03-16 from parallel audit (Product, Architect, Dev, QA agents)_
+_Last updated: 2026-03-16_
+
+## Completed
+
+| # | Item | Completed | Commit |
+|---|------|-----------|--------|
+| C1 | Player selection clutter — collapsed behind disclosure toggle | 2026-03-16 | fcff6ba |
+| C2 | SeasonStatsView test fixtures — valid quarters, removed stale assertion | 2026-03-16 | fcff6ba |
+| C5 | Mobile/tablet layout — responsive quarter cards, compact headers | 2026-03-16 | 0f99b53 |
+| H2 | AllocationGrid DRY — extracted shared outfield slot renderer | 2026-03-16 | 0f99b53 |
+| H3 | Magic numbers — replaced with CONFIG.QUARTER_DURATION / MAX_MINUTE_VARIANCE | 2026-03-16 | fcff6ba |
+| H6 | Full-mode validation — slot count, no wave props, correct minutes checks + tests | 2026-03-16 | fcff6ba |
+| H9 | Quarter-mode labels — "No subs" / "Sub halfway" | 2026-03-16 | fcff6ba |
+| -- | Formation change — 1 DEF + 1 MID + 2 FWD, ATT→FWD rename, backwards compat | 2026-03-16 | 4116058 |
+| -- | Copyright footer — © 2026 David Roche on login + main app | 2026-03-16 | 0f99b53 |
 
 ## Critical — Fix before next feature
 
 | # | Item | Source | What | Where |
 |---|------|--------|------|-------|
-| C1 | Player selection clutter | Product, User | "Removed players" and "Roster changes" shown inline during match setup — takes up 40% of screen, irrelevant to match flow | PlayerInput.tsx:418-496 |
-| C2 | SeasonStatsView test fixtures broken | QA | 2 failing tests caused by incomplete allocation in test fixtures (not a code bug). Blocks trust in test suite. | SeasonStatsView.test.tsx:110,165 |
 | C3 | App.tsx is a 1,174-line god component | Architect, Dev | 29 useState calls, all state + handlers in one file. Untestable, hard to refactor. | App.tsx |
 | C4 | Zero test coverage on core workflows | QA | App.tsx, AllocationGrid, EditModal, ConfirmTeamModal — none have tests. Mode switching, sub-point changes, drag-drop all untested. | Multiple |
-| C5 | Mobile/tablet layout is cluttered | Product, User | Quarter mode toggles + sub-point stepper + quarter title overflow on small screens. Grid is md:grid-cols-2 with no tablet/phone optimisation. | AllocationGrid.tsx:182,209-256 |
 
 ## High — Should do soon
 
 | # | Item | Source | What | Where |
 |---|------|--------|------|-------|
-| H1 | Smart GK suggestion | Product, User | GK selector is fully manual with no stats context. Could recommend based on GK appearance rate, normalised for games played. | GKSelector.tsx |
-| H2 | AllocationGrid DRY violation | Dev | Near-identical slot rendering repeated 4 times (full/first-wave/second-wave/legacy). ~250 lines of duplication. | AllocationGrid.tsx:327-533 |
-| H3 | Magic number 10 scattered everywhere | Dev | quarterDuration = 10 hardcoded in AllocationGrid, EditModal, ConfirmTeamModal, App.tsx instead of using CONFIG.QUARTER_DURATION. Same for variance 5. | Multiple files |
+| H1 | Smart GK suggestion | Product, User | GK selector is fully manual with no stats context. Subsumed by Smart Allocation Phase 1-2 (see roadmap below). | GKSelector.tsx |
 | H4 | SeasonStatsView is 1,704-line god component | Architect, Dev | Handles match CRUD, bulk import, stats aggregation, heatmap, sorting/filtering, edit modals — all in one file. | SeasonStatsView.tsx |
 | H5 | Persistence layer has no schema validation on load | Architect, QA | JSON.parse() with no Zod validation. Corrupted localStorage silently crashes app. | persistence.ts:169 |
-| H6 | validateAllocation() doesn't check full-mode structure | QA | No validation that full-mode quarters have 5 slots, no wave properties, all 10-min. Could accept corrupt data. | allocator.ts:427-490 |
 | H7 | Mode switching logic untested | QA | handleQuarterModeChange in App.tsx — summary recalculation, player deduplication, slot restructuring — zero test coverage. | App.tsx:379-467 |
 | H8 | No localStorage quota handling | Architect | localStorage.setItem() without try/catch. Silently fails when storage full. | persistence.ts:161,328,372 |
-| H9 | "Same team" / "Make changes" labels unclear | Product | Non-obvious to first-time coaches. "Make changes" doesn't convey "two waves of substitution". | AllocationGrid.tsx:219,229 |
 | H10 | Persistence round-trip for quarterModes untested | QA | No test verifies save → load preserves allocation.quarterModes. Risk of modes resetting on refresh. | persistence.ts |
 
 ## Medium — Worth doing
@@ -61,10 +69,109 @@ _Generated 2026-03-16 from parallel audit (Product, Architect, Dev, QA agents)_
 | L9 | Unused TODO in AuditLogView | Dev | Commented-out filter prop. | AuditLogView.tsx:13 |
 | L10 | Sequential API fetches | Architect | syncMatchesFromSource fetches matches then stats sequentially. Could be Promise.all. | App.tsx:162-206 |
 
-## User's original items mapped
+---
 
-| Your item | Maps to | Priority |
-|-----------|---------|----------|
-| 1. Removed players / roster changes clutter | C1 | Critical |
-| 2. GK selection from player stats | H1 | High |
-| 3. Mobile/tablet optimisation | C5, M6, M7, H2 | Critical/High |
+## Smart Allocation Roadmap
+
+_Designed 2026-03-16 by parallel agents (Data Science, Architecture, Product). Goal: evolve from fairness-only to fair AND competitive allocation using historical match data._
+
+### Design Principles
+
+1. **Fairness is the floor** — smart features work within the existing variance constraint, never override it.
+2. **Suggestions, not mandates** — coach overrides always win. One tap to accept, one tap to dismiss.
+3. **No child labelling** — frame as "experience at position" and "rotation balance", never talent/ability.
+4. **Progressive disclosure** — coaches who ignore smart features get exactly today's experience.
+5. **Pitchside speed** — if a feature adds >5 seconds to the pre-match flow, it has failed.
+
+### Phase 1: Season-Aware Nudges (no allocator changes)
+
+**What:** After allocation, show 1-3 insight cards between GK selector and AllocationGrid.
+
+**Nudge types:**
+- Season minutes balance: "Eli is 12 min below season average — getting above-average time today"
+- GK rotation: "3 players haven't tried GK yet this season: Mia, Kai, Leo"
+- Bench pattern: "Sam has been a sub in Q1 for the last 2 matches — starting today"
+
+**Implementation:**
+- New `useSeasonInsights(matches, allocation, players)` hook
+- New `SeasonInsights` component (compact card, 1-3 lines)
+- Show nothing with <2 saved matches
+- Zero changes to allocator
+
+**Subsumes:** H1 (Smart GK suggestion)
+
+### Phase 2: Position Preference Memory (light allocator touch)
+
+**What:** Allocator uses historical position distribution as a tiebreaker. Add per-player profiles.
+
+**New types:**
+- `PlayerProfile { name, positionPreferences, canPlayGK, notes? }`
+- Position affinity derived from `heatMapUtils.ts` (already exists)
+
+**Implementation:**
+- Extend `allocate()` to accept optional `positionHistory` parameter
+- Tiebreaker: when two players are equal on minutes, prefer the one with more time at the target position
+- UI: small position chip next to each player name in AllocationGrid (e.g., faded "DEF" tag)
+- Player profile editor (preferred position, can-play-GK toggle)
+
+### Phase 3: Match Importance Toggle
+
+**What:** Single segmented control: "Equal time" vs "Best lineup".
+
+| Mode | Variance cap | Position weighting | GK policy |
+|------|-------------|-------------------|-----------|
+| Equal time (default) | 5 min | Light tiebreaker | Rotate evenly |
+| Best lineup | 8 min (relaxed) | Heavy preference | Best available |
+
+**Implementation:**
+- Add `ScoringWeights` type to allocator context
+- Replace greedy sort comparator with weighted scoring function
+- Hidden/disabled until 3+ matches exist
+
+### Phase 4: Full Scoring Function Architecture
+
+**What:** Replace sort-based selection with `scoreCandidate(player, position, context)`.
+
+**Context type:**
+```
+AllocationContext {
+  manualGKs?, subPoints?, quarterModes?,
+  playerProfiles?: Map<string, PlayerProfile>,
+  seasonSnapshot?: SeasonSnapshot,
+  scoringWeights?: ScoringWeights
+}
+```
+
+**Scoring formula:**
+```
+compositeScore = (1 - w) * fairnessScore
+               + w * (0.6 * positionFitScore + 0.4 * performanceScore)
+```
+
+**Cold start:** With no history, all weights evaluate to zero → identical to today's behaviour.
+
+### Configurable Knobs (across all phases)
+
+| Knob | Phase | Type | Default |
+|------|-------|------|---------|
+| Match importance toggle | 3 | Segmented: "Equal time" / "Best lineup" | Equal time |
+| Position lock per slot | 2 | Lock icon on AllocationGrid slots | Unlocked |
+| Season fairness strictness | 3 | Slider in RulesEngine | 5 min |
+| GK rotation policy | 2 | Dropdown: Equal / Best / Manual | Equal |
+| History window | 4 | Dropdown: Last 3 / Last 5 / Full season | Full season |
+
+### Data Gaps to Close
+
+| Data | Value | Phase to add |
+|------|-------|-------------|
+| Per-quarter goals (for/against) | Know which lineup was on when goals happened | Phase 3 |
+| Player ratings per match (1-5) | Coach subjective input | Phase 2 |
+| Assists | Half-built in API already | Phase 2 |
+| Coach position preference per player | Explicit overrides | Phase 2 |
+
+### Architecture Notes
+
+- **Pre-computation:** `buildSeasonSnapshot(matches)` runs before allocation, not during. Keeps allocator fast and testable.
+- **Output stability:** `Allocation` type never changes. All downstream (persistence, UI, validation) continues to work.
+- **Testing:** Hard constraints (minutes total, variance, position counts) are property-based tests that always hold. Soft objectives (position fit) use statistical tests over multiple runs.
+- **Migration:** Phase 1 is purely additive (new component). Phase 2 adds optional parameter. Phase 3 replaces sort comparator. Phase 4 is the architectural target. Each phase ships independently.
