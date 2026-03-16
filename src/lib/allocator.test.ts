@@ -6,9 +6,10 @@ import {
   swapPositions,
   swapWithSub,
   getSubsForQuarter,
+  getPlayerQuarterBreakdown,
 } from './allocator';
 import { CONFIG } from '../config/constants';
-import type { Allocation, Quarter } from './types';
+import type { Allocation, Quarter, QuarterMode } from './types';
 
 const expectFairnessRespectingWarnings = (allocation: Allocation) => {
   const stats = calculateVariance(allocation);
@@ -608,6 +609,134 @@ describe('allocator', () => {
           }
         });
       });
+    });
+  });
+
+  describe('allocate with quarter modes', () => {
+    it('should produce 5 slots (1 GK + 4 outfield) for full-mode quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'split', 'full', 'split'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      // Full quarters: 5 slots (1 GK + 2 DEF + 2 ATT)
+      expect(allocation.quarters[0]!.slots).toHaveLength(5);
+      expect(allocation.quarters[2]!.slots).toHaveLength(5);
+
+      // Split quarters: 9 slots (1 GK + 4 DEF + 4 ATT)
+      expect(allocation.quarters[1]!.slots).toHaveLength(9);
+      expect(allocation.quarters[3]!.slots).toHaveLength(9);
+    });
+
+    it('should give outfield players full 10 minutes in full-mode quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'full', 'full', 'full'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      allocation.quarters.forEach((q) => {
+        q.slots.forEach((slot) => {
+          expect(slot.minutes).toBe(CONFIG.QUARTER_DURATION);
+        });
+      });
+    });
+
+    it('should not assign wave property to outfield slots in full-mode quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'full', 'full', 'full'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      allocation.quarters.forEach((q) => {
+        q.slots.forEach((slot) => {
+          expect(slot.wave).toBeUndefined();
+        });
+      });
+    });
+
+    it('should produce correct total minutes with all-full quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'full', 'full', 'full'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      const totalMinutes = Object.values(allocation.summary).reduce(
+        (sum, minutes) => sum + minutes,
+        0
+      );
+      const expectedTotalMinutes = CONFIG.QUARTERS * CONFIG.QUARTER_DURATION * 5;
+      expect(totalMinutes).toBe(expectedTotalMinutes);
+    });
+
+    it('should produce correct total minutes with mixed modes', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'split', 'full', 'split'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      const totalMinutes = Object.values(allocation.summary).reduce(
+        (sum, minutes) => sum + minutes,
+        0
+      );
+      const expectedTotalMinutes = CONFIG.QUARTERS * CONFIG.QUARTER_DURATION * 5;
+      expect(totalMinutes).toBe(expectedTotalMinutes);
+    });
+
+    it('should pass validation with full-mode quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'full', 'full', 'full'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      const errors = validateAllocation(allocation);
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should pass validation with mixed modes', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+      const quarterModes: QuarterMode[] = ['full', 'split', 'split', 'full'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      const errors = validateAllocation(allocation);
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should store quarterModes on the allocation', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'split', 'full', 'split'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      expect(allocation.quarterModes).toEqual(quarterModes);
+    });
+
+    it('should work with manual GKs and full-mode quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+      const manualGKs: [string, string, string, string] = ['P1', 'P2', 'P3', 'P4'];
+      const quarterModes: QuarterMode[] = ['full', 'full', 'split', 'split'];
+      const allocation = allocate(players, manualGKs, undefined, quarterModes);
+
+      expect(allocation.quarters[0]!.slots.find((s) => s.position === 'GK')!.player).toBe('P1');
+      expect(allocation.quarters[0]!.slots).toHaveLength(5);
+      expect(allocation.quarters[2]!.slots.find((s) => s.position === 'GK')!.player).toBe('P3');
+      expect(allocation.quarters[2]!.slots).toHaveLength(9);
+    });
+
+    it('should default to split mode when quarterModes not provided', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const allocation = allocate(players);
+
+      // All quarters should have 9 slots (split mode default)
+      allocation.quarters.forEach((q) => {
+        expect(q.slots).toHaveLength(9);
+      });
+    });
+
+    it('should show "10" in player breakdown for full-mode quarters', () => {
+      const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+      const quarterModes: QuarterMode[] = ['full', 'split', 'full', 'split'];
+      const allocation = allocate(players, undefined, undefined, quarterModes);
+
+      // Find an outfield player in Q1 (full mode)
+      const q1Outfield = allocation.quarters[0]!.slots.find((s) => s.position !== 'GK');
+      expect(q1Outfield).toBeDefined();
+
+      const breakdown = getPlayerQuarterBreakdown(allocation, q1Outfield!.player, players);
+      // Q1 is full mode — player has one 10-min slot, so breakdown should show "10"
+      expect(breakdown[0]).toBe('10');
     });
   });
 });

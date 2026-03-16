@@ -14,6 +14,9 @@ export type Quarter = 1 | 2 | 3 | 4;
 /** Wave within a quarter (for outfield players) */
 export type Wave = 'first' | 'second';
 
+/** Quarter substitution mode — full team stays on, or split into two waves */
+export type QuarterMode = 'full' | 'split';
+
 /**
  * Represents a single player slot in a quarter
  */
@@ -50,6 +53,8 @@ export interface Allocation {
   warnings?: string[];
   /** Per-quarter sub points [Q1, Q2, Q3, Q4] — minute within quarter when subs happen */
   subPoints?: number[];
+  /** Per-quarter mode [Q1, Q2, Q3, Q4] — 'full' = same team all quarter, 'split' = two waves */
+  quarterModes?: QuarterMode[];
 }
 
 /**

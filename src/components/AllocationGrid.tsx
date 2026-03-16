@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from 'react';
-import type { Allocation, Quarter, PlayerSlot } from '../lib/types';
+import type { Allocation, Quarter, QuarterMode, PlayerSlot } from '../lib/types';
 import { getSubsForQuarter } from '../lib/allocator';
 
 interface AllocationGridProps {
@@ -11,6 +11,8 @@ interface AllocationGridProps {
   onDrop?: (quarter: Quarter, slotIndex: number) => void;
   onDragEnd?: () => void;
   onSubPointChange?: (quarter: number, subPoint: number) => void;
+  quarterModes?: QuarterMode[];
+  onQuarterModeChange?: (quarter: number, mode: QuarterMode) => void;
 }
 
 type DragState = {
@@ -32,6 +34,8 @@ export function AllocationGrid({
   onDrop,
   onDragEnd,
   onSubPointChange,
+  quarterModes,
+  onQuarterModeChange,
 }: AllocationGridProps) {
   // Enhanced drag state tracking for visual feedback
   const [dragState, setDragState] = useState<DragState>({
@@ -179,6 +183,7 @@ export function AllocationGrid({
         {allocation.quarters.map((quarter) => {
           const quarterNumber = quarter.quarter;
           const subs = getSubsForQuarter(allocation, quarterNumber, allPlayers);
+          const mode = quarterModes?.[quarterNumber - 1] ?? 'split';
 
           const getSlotIndex = (slot: PlayerSlot) =>
             quarter.slots.findIndex((candidate) => candidate === slot);
@@ -199,29 +204,57 @@ export function AllocationGrid({
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Quarter {quarter.quarter}
                 </h3>
-                {onSubPointChange && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <span className="text-gray-500 dark:text-gray-400 mr-1">Subs at:</span>
-                    <button
-                      onClick={() => subPoint > 1 && onSubPointChange(quarterNumber, subPoint - 1)}
-                      disabled={subPoint <= 1}
-                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center font-semibold text-gray-900 dark:text-white">
-                      {subPoint}
-                    </span>
-                    <button
-                      onClick={() => subPoint < quarterDuration - 1 && onSubPointChange(quarterNumber, subPoint + 1)}
-                      disabled={subPoint >= quarterDuration - 1}
-                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      +
-                    </button>
-                    <span className="text-gray-500 dark:text-gray-400 ml-1">min</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* Mode toggle */}
+                  {onQuarterModeChange && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <button
+                        onClick={() => onQuarterModeChange(quarterNumber, 'full')}
+                        className={`px-2 py-1 rounded transition-colors ${
+                          mode === 'full'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
+                      >
+                        Same team
+                      </button>
+                      <button
+                        onClick={() => onQuarterModeChange(quarterNumber, 'split')}
+                        className={`px-2 py-1 rounded transition-colors ${
+                          mode === 'split'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
+                      >
+                        Make changes
+                      </button>
+                    </div>
+                  )}
+                  {/* Sub-point stepper — only visible in split mode */}
+                  {onSubPointChange && mode === 'split' && (
+                    <div className="flex items-center gap-1 text-sm">
+                      <span className="text-gray-500 dark:text-gray-400 mr-1">Subs at:</span>
+                      <button
+                        onClick={() => subPoint > 1 && onSubPointChange(quarterNumber, subPoint - 1)}
+                        disabled={subPoint <= 1}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        -
+                      </button>
+                      <span className="w-6 text-center font-semibold text-gray-900 dark:text-white">
+                        {subPoint}
+                      </span>
+                      <button
+                        onClick={() => subPoint < quarterDuration - 1 && onSubPointChange(quarterNumber, subPoint + 1)}
+                        disabled={subPoint >= quarterDuration - 1}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        +
+                      </button>
+                      <span className="text-gray-500 dark:text-gray-400 ml-1">min</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -291,8 +324,60 @@ export function AllocationGrid({
                   }
                 })()}
 
-                {/* First Wave */}
-                {quarter.slots.filter((s) => s.wave === 'first').length > 0 && (
+                {/* Full quarter mode: single flat outfield section */}
+                {mode === 'full' && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      Full quarter (0-{quarterDuration} min)
+                    </p>
+                    {quarter.slots
+                      .filter((s) => s.position !== 'GK')
+                      .map((slot) => {
+                        const currentIndex = getSlotIndex(slot);
+                        if (currentIndex < 0) return null;
+                        return (
+                          <div
+                            key={`${quarterNumber}-slot-${currentIndex}`}
+                            draggable={onDragStart && slot.position !== 'GK'}
+                            onDragStart={(e) => handleDragStart(e, quarterNumber, currentIndex, slot)}
+                            onDragOver={(e) => handleDragOver(e, quarterNumber, currentIndex)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, quarterNumber, currentIndex, slot)}
+                            onDragEnd={handleDragEndLocal}
+                            onClick={() => handleSlotClick(quarterNumber, currentIndex, slot)}
+                            className={getSlotClasses(
+                              slot,
+                              `px-3 py-2 rounded-md mb-1 ${
+                                slot.position === 'DEF'
+                                  ? 'bg-blue-100 dark:bg-blue-900'
+                                  : 'bg-red-100 dark:bg-red-900'
+                              }`,
+                              quarterNumber,
+                              currentIndex
+                            )}
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {slot.position}
+                              </span>
+                              <span className="text-gray-700 dark:text-gray-300">
+                                {slot.player}
+                                {isPlayerOverThreshold(slot.player) && (
+                                  <span className="ml-1 text-amber-500 dark:text-amber-400" title={`${slot.player} is ${Math.abs((allocation.summary[slot.player] ?? 0) - meanMinutes).toFixed(0)} min from average (${meanMinutes.toFixed(0)} min)`}>&#9888;</span>
+                                )}
+                              </span>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {slot.minutes} min
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+                {/* Split mode: First Wave */}
+                {mode === 'split' && quarter.slots.filter((s) => s.wave === 'first').length > 0 && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                       0-{subPoint} minutes
@@ -343,8 +428,8 @@ export function AllocationGrid({
                   </div>
                 )}
 
-                {/* Second Wave */}
-                {quarter.slots.filter((s) => s.wave === 'second').length > 0 && (
+                {/* Split mode: Second Wave */}
+                {mode === 'split' && quarter.slots.filter((s) => s.wave === 'second').length > 0 && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                       {subPoint}-{quarterDuration} minutes
@@ -395,8 +480,8 @@ export function AllocationGrid({
                   </div>
                 )}
 
-                {/* Players without wave property (legacy data) */}
-                {quarter.slots.filter((s) => s.position !== 'GK' && !s.wave).length > 0 && (
+                {/* Players without wave property (legacy data — only in split mode) */}
+                {mode === 'split' && quarter.slots.filter((s) => s.position !== 'GK' && !s.wave).length > 0 && (
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                       Other Players

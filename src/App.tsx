@@ -23,7 +23,7 @@ import { getRules, persistRules, resetRules } from './lib/rules';
 import { clearSession, loadStoredSession, storeSession, type AuthSession } from './lib/auth';
 import { ensureSeedData } from './lib/bootstrap';
 import { fetchTeamStats, type TeamStats } from './lib/statsClient';
-import type { Allocation, Quarter, PlayerSlot } from './lib/types';
+import type { Allocation, Quarter, QuarterMode, PlayerSlot } from './lib/types';
 import type { MatchRecord } from './lib/persistence';
 import type { RuleConfig } from './config/rules';
 import { TEAM_ID, USE_API_PERSISTENCE } from './config/environment';
@@ -96,6 +96,7 @@ function App() {
   const [players, setPlayers] = useState<string[]>([]);
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [subPoints, setSubPoints] = useState<number[]>([5, 5, 5, 5]);
+  const [quarterModes, setQuarterModes] = useState<QuarterMode[]>(['split', 'split', 'split', 'split']);
   const [error, setError] = useState<string>('');
   const [manualGKs, setManualGKs] = useState<[string, string, string, string] | null>(null);
   const [matchPersistenceMode, setMatchPersistenceMode] = useState(() => getMatchPersistenceMode());
@@ -242,7 +243,7 @@ function App() {
       // Generate new allocation only if we have enough players
       if (newPlayers.length >= 5 && newPlayers.length <= 15) {
         try {
-          return allocate(newPlayers, undefined, subPoints);
+          return allocate(newPlayers, undefined, subPoints, quarterModes);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to allocate');
           return null;
@@ -251,7 +252,7 @@ function App() {
 
       return null;
     });
-  }, [subPoints]); // subPoints needed for allocate()
+  }, [subPoints, quarterModes]); // subPoints/quarterModes needed for allocate()
 
 
   const handleGenerateAllocation = useCallback(() => {
@@ -265,14 +266,14 @@ function App() {
     }
 
     try {
-      const newAllocation = allocate(players, manualGKs || undefined, subPoints);
+      const newAllocation = allocate(players, manualGKs || undefined, subPoints, quarterModes);
       setAllocation(newAllocation);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to allocate');
       setAllocation(null);
     }
-  }, [players, manualGKs, subPoints]);
+  }, [players, manualGKs, subPoints, quarterModes]);
 
   const handleSlotClick = (quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
     setEditingQuarter(quarter);
@@ -375,6 +376,96 @@ function App() {
     setAllocation({ ...allocation, quarters: newQuarters, summary, subPoints: newSubPoints });
   };
 
+  const handleQuarterModeChange = (quarterNumber: number, newMode: QuarterMode) => {
+    const newModes = [...quarterModes];
+    newModes[quarterNumber - 1] = newMode;
+    setQuarterModes(newModes);
+
+    if (!allocation) return;
+
+    const quarterDuration = 10;
+    const currentQuarter = allocation.quarters.find((q) => q.quarter === quarterNumber);
+    if (!currentQuarter) return;
+
+    let newSlots: PlayerSlot[];
+
+    if (newMode === 'full') {
+      // Switching to full: collapse waves into single set of players at 10 min each
+      const gkSlot = currentQuarter.slots.find((s) => s.position === 'GK');
+      // Take outfield players from first wave (or any available outfield)
+      const outfieldSlots = currentQuarter.slots.filter((s) => s.position !== 'GK');
+      // Deduplicate players, preferring first-wave players
+      const seen = new Set<string>();
+      const uniqueOutfield: PlayerSlot[] = [];
+      // Prioritise first-wave, then second-wave, then legacy (no wave)
+      const sorted = [...outfieldSlots].sort((a, b) => {
+        const order = (w?: string) => w === 'first' ? 0 : w === 'second' ? 1 : 2;
+        return order(a.wave) - order(b.wave);
+      });
+      for (const slot of sorted) {
+        if (!seen.has(slot.player) && uniqueOutfield.length < 4) {
+          seen.add(slot.player);
+          uniqueOutfield.push({ ...slot, minutes: quarterDuration, wave: undefined });
+        }
+      }
+      // If we still don't have 4 unique outfield, fill from second wave
+      if (uniqueOutfield.length < 4) {
+        for (const slot of sorted) {
+          if (!seen.has(slot.player) && uniqueOutfield.length < 4) {
+            seen.add(slot.player);
+            uniqueOutfield.push({ ...slot, minutes: quarterDuration, wave: undefined });
+          }
+        }
+      }
+      newSlots = [
+        gkSlot ? { ...gkSlot } : { player: '', position: 'GK' as const, minutes: quarterDuration },
+        ...uniqueOutfield,
+      ];
+    } else {
+      // Switching to split: expand full-quarter players into two waves
+      const gkSlot = currentQuarter.slots.find((s) => s.position === 'GK');
+      const outfieldSlots = currentQuarter.slots.filter((s) => s.position !== 'GK');
+      const subPoint = subPoints[quarterNumber - 1] ?? 5;
+
+      // First wave: same players, with wave and adjusted minutes
+      const firstWave = outfieldSlots.map((s) => ({
+        ...s,
+        minutes: subPoint,
+        wave: 'first' as const,
+      }));
+      // Second wave: same players duplicated with second wave timing
+      const secondWave = outfieldSlots.map((s) => ({
+        ...s,
+        minutes: quarterDuration - subPoint,
+        wave: 'second' as const,
+      }));
+      newSlots = [
+        gkSlot ? { ...gkSlot } : { player: '', position: 'GK' as const, minutes: quarterDuration },
+        ...firstWave,
+        ...secondWave,
+      ];
+    }
+
+    const newQuarters = allocation.quarters.map((q) =>
+      q.quarter === quarterNumber ? { ...q, slots: newSlots } : q
+    );
+
+    // Recalculate summary
+    const summary: Record<string, number> = {};
+    newQuarters.forEach((q) => {
+      q.slots.forEach((s) => {
+        if (s.player) {
+          summary[s.player] = (summary[s.player] || 0) + s.minutes;
+        }
+      });
+    });
+    players.forEach((p) => {
+      if (!summary[p]) summary[p] = 0;
+    });
+
+    setAllocation({ ...allocation, quarters: newQuarters, summary, quarterModes: newModes });
+  };
+
   const handleCloseModal = () => {
     setEditModalOpen(false);
     setEditingSlot(null);
@@ -471,13 +562,13 @@ function App() {
       }
 
       try {
-        return allocate(players, gks || undefined, subPoints);
+        return allocate(players, gks || undefined, subPoints, quarterModes);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to regenerate with GK selection');
         return prev; // Keep previous allocation on error
       }
     });
-  }, [players, subPoints]);
+  }, [players, subPoints, quarterModes]);
 
   const handleOpenConfirm = () => {
     setConfirmError('');
@@ -579,6 +670,8 @@ function App() {
     setPlayers([]);
     setAllocation(null);
     setManualGKs(null);
+    setQuarterModes(['split', 'split', 'split', 'split']);
+    setSubPoints([5, 5, 5, 5]);
     setMatches([]);
     setActiveTab('match');
     setSaveStatus('');
@@ -902,6 +995,8 @@ function App() {
                     onDrop={handleDrop}
                     onDragEnd={handleDragEnd}
                     onSubPointChange={handleSubPointChange}
+                    quarterModes={quarterModes}
+                    onQuarterModeChange={handleQuarterModeChange}
                   />
                 </div>
 
@@ -935,6 +1030,7 @@ function App() {
               onSave={handleSaveEdit}
               onSaveProperties={handleSaveSlotProperties}
               subPoint={editingQuarter ? subPoints[editingQuarter - 1] : undefined}
+              quarterMode={editingQuarter ? quarterModes[editingQuarter - 1] : undefined}
             />
 
             {players.length === 0 && (

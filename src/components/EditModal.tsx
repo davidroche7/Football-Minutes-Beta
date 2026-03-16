@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Quarter, PlayerSlot, Wave } from '../lib/types';
+import type { Quarter, QuarterMode, PlayerSlot, Wave } from '../lib/types';
 
 interface EditModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface EditModalProps {
   onSave: (quarter: Quarter, slotIndex: number, newPlayer: string) => void;
   onSaveProperties?: (quarter: Quarter, slotIndex: number, updates: Partial<Pick<PlayerSlot, 'wave' | 'minutes'>>) => void;
   subPoint?: number;
+  quarterMode?: QuarterMode;
 }
 
 /**
@@ -26,6 +27,7 @@ export function EditModal({
   onSave,
   onSaveProperties,
   subPoint = 5,
+  quarterMode = 'split',
 }: EditModalProps) {
   const [selectedWave, setSelectedWave] = useState<Wave | undefined>(slot?.wave);
   const [selectedMinutes, setSelectedMinutes] = useState<number>(slot?.minutes ?? 5);
@@ -78,8 +80,8 @@ export function EditModal({
           </p>
         </div>
 
-        {/* Wave selector for outfield players */}
-        {slot.position !== 'GK' && onSaveProperties && (
+        {/* Wave selector for outfield players — only in split mode */}
+        {slot.position !== 'GK' && onSaveProperties && quarterMode === 'split' && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Wave Assignment
@@ -109,8 +111,8 @@ export function EditModal({
           </div>
         )}
 
-        {/* Minutes stepper for outfield players */}
-        {slot.position !== 'GK' && onSaveProperties && (
+        {/* Minutes stepper for outfield players — only in split mode */}
+        {slot.position !== 'GK' && onSaveProperties && quarterMode === 'split' && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Playing Time

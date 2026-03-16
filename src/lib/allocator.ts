@@ -6,6 +6,7 @@ import { CONFIG } from '../config/constants';
 import type {
   Allocation,
   Quarter,
+  QuarterMode,
   PlayerSlot,
   QuarterAllocation,
 } from './types';
@@ -20,7 +21,7 @@ const MAX_ALLOCATION_ATTEMPTS = 200;
  * 3. Track player minutes to minimise variance.
  * 4. Enforce fairness rules (GK outfield requirement, no consecutive subs).
  */
-export function allocate(players: string[], manualGKs?: [string, string, string, string], subPoints?: number[]): Allocation {
+export function allocate(players: string[], manualGKs?: [string, string, string, string], subPoints?: number[], quarterModes?: QuarterMode[]): Allocation {
   if (players.length < 5) {
     throw new Error('Need at least 5 players for a 5-a-side match');
   }
@@ -43,7 +44,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
   let bestAllocationWarnings: string[] = [];
 
   for (let attempt = 0; attempt < MAX_ALLOCATION_ATTEMPTS; attempt++) {
-    const attemptResult = performAllocationAttempt(players, manualGKs, subPoints);
+    const attemptResult = performAllocationAttempt(players, manualGKs, subPoints, quarterModes);
     const { allocation, variance, successiveSubError } = attemptResult;
 
     if (successiveSubError) {
@@ -58,7 +59,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
     }
 
     if (variance <= CONFIG.RULES.MAX_MINUTE_VARIANCE) {
-      return { ...allocation, subPoints, warnings: [] };
+      return { ...allocation, subPoints, quarterModes, warnings: [] };
     }
   }
 
@@ -70,7 +71,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
   }
 
   if (bestVariance <= CONFIG.RULES.MAX_MINUTE_VARIANCE) {
-    return { ...bestAllocation, subPoints, warnings: bestAllocationWarnings };
+    return { ...bestAllocation, subPoints, quarterModes, warnings: bestAllocationWarnings };
   }
 
   const warning =
@@ -79,6 +80,7 @@ export function allocate(players: string[], manualGKs?: [string, string, string,
   return {
     ...bestAllocation,
     subPoints,
+    quarterModes,
     warnings: [warning],
   };
 }
@@ -92,7 +94,8 @@ interface AllocationAttemptResult {
 function performAllocationAttempt(
   players: string[],
   manualGKs?: [string, string, string, string],
-  subPoints?: number[]
+  subPoints?: number[],
+  quarterModes?: QuarterMode[]
 ): AllocationAttemptResult {
   const playerMinutes = new Map<string, number>();
   const playerGKCount = new Map<string, number>();
@@ -114,19 +117,34 @@ function performAllocationAttempt(
       players.filter((p) => (consecutiveSubCounts.get(p) || 0) >= 1)
     );
 
-    const subPoint = subPoints?.[q - 1] ?? CONFIG.TIME_BLOCKS.OUTFIELD_FIRST;
-    const waveDurations = { first: subPoint, second: CONFIG.QUARTER_DURATION - subPoint };
+    const mode = quarterModes?.[q - 1] ?? 'split';
+    let slots: PlayerSlot[];
 
-    const slots = allocateQuarter(
-      q as Quarter,
-      players,
-      playerMinutes,
-      playerGKCount,
-      playerOutfieldPrimaryWaveCount,
-      waveDurations,
-      manualGK,
-      mustPlayPlayers
-    );
+    if (mode === 'full') {
+      slots = allocateFullQuarter(
+        q as Quarter,
+        players,
+        playerMinutes,
+        playerGKCount,
+        playerOutfieldPrimaryWaveCount,
+        manualGK,
+        mustPlayPlayers
+      );
+    } else {
+      const subPoint = subPoints?.[q - 1] ?? CONFIG.TIME_BLOCKS.OUTFIELD_FIRST;
+      const waveDurations = { first: subPoint, second: CONFIG.QUARTER_DURATION - subPoint };
+
+      slots = allocateQuarter(
+        q as Quarter,
+        players,
+        playerMinutes,
+        playerGKCount,
+        playerOutfieldPrimaryWaveCount,
+        waveDurations,
+        manualGK,
+        mustPlayPlayers
+      );
+    }
     quarters.push({ quarter: q as Quarter, slots });
 
     const playingThisQuarter = new Set(slots.map((slot) => slot.player));
@@ -228,6 +246,62 @@ function allocateQuarter(
   secondWave.slice(2, 4).forEach((p) => {
     slots.push({ player: p, position: 'ATT', minutes: waveDurations.second, wave: 'second' });
     playerMinutes.set(p, (playerMinutes.get(p) || 0) + waveDurations.second);
+  });
+
+  return slots;
+}
+
+/**
+ * Allocate a full quarter — same 5 players for the entire 10 minutes, no wave split.
+ * Produces 1 GK (10 min) + 2 DEF (10 min) + 2 ATT (10 min), all without wave property.
+ */
+function allocateFullQuarter(
+  _quarter: Quarter,
+  players: string[],
+  playerMinutes: Map<string, number>,
+  playerGKCount: Map<string, number>,
+  playerOutfieldPrimaryWaveCount: Map<string, number>,
+  manualGK?: string,
+  mustPlayPlayers?: Set<string>
+): PlayerSlot[] {
+  const slots: PlayerSlot[] = [];
+  const usedThisQuarter = new Set<string>();
+
+  // 1. Assign GK (full 10 minutes)
+  const gk =
+    manualGK ||
+    selectGK(players, playerMinutes, playerGKCount, mustPlayPlayers);
+  slots.push({ player: gk, position: 'GK', minutes: CONFIG.TIME_BLOCKS.GK_FULL });
+  usedThisQuarter.add(gk);
+  playerMinutes.set(gk, (playerMinutes.get(gk) || 0) + CONFIG.TIME_BLOCKS.GK_FULL);
+  playerGKCount.set(gk, (playerGKCount.get(gk) || 0) + 1);
+
+  // 2. Assign 4 outfield players for full quarter (no wave, 10 min each)
+  const outfield = selectOutfieldWave(
+    players,
+    playerMinutes,
+    usedThisQuarter,
+    4,
+    true,
+    playerGKCount,
+    playerOutfieldPrimaryWaveCount,
+    mustPlayPlayers,
+    true,
+    gk
+  );
+
+  outfield.slice(0, 2).forEach((p) => {
+    slots.push({ player: p, position: 'DEF', minutes: CONFIG.QUARTER_DURATION });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.QUARTER_DURATION);
+    playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
+    usedThisQuarter.add(p);
+  });
+
+  outfield.slice(2, 4).forEach((p) => {
+    slots.push({ player: p, position: 'ATT', minutes: CONFIG.QUARTER_DURATION });
+    playerMinutes.set(p, (playerMinutes.get(p) || 0) + CONFIG.QUARTER_DURATION);
+    playerOutfieldPrimaryWaveCount.set(p, (playerOutfieldPrimaryWaveCount.get(p) || 0) + 1);
+    usedThisQuarter.add(p);
   });
 
   return slots;
@@ -361,6 +435,9 @@ export function validateAllocation(allocation: Allocation): string[] {
 
   // Check each quarter has correct structure
   allocation.quarters.forEach((q) => {
+    const mode = allocation.quarterModes?.[q.quarter - 1] ?? 'split';
+    const positionMultiplier = mode === 'full' ? 1 : 2;
+
     const gkCount = q.slots.filter((s) => s.position === 'GK').length;
     if (gkCount !== config.POSITIONS.GK) {
       errors.push(`Quarter ${q.quarter}: Expected ${config.POSITIONS.GK} GK, got ${gkCount}`);
@@ -368,17 +445,17 @@ export function validateAllocation(allocation: Allocation): string[] {
 
     // Count DEF positions
     const defCount = q.slots.filter((s) => s.position === 'DEF').length;
-    if (defCount !== config.POSITIONS.DEF * 2) {
+    if (defCount !== config.POSITIONS.DEF * positionMultiplier) {
       errors.push(
-        `Quarter ${q.quarter}: Expected ${config.POSITIONS.DEF * 2} DEF slots, got ${defCount}`
+        `Quarter ${q.quarter}: Expected ${config.POSITIONS.DEF * positionMultiplier} DEF slots, got ${defCount}`
       );
     }
 
     // Count ATT positions
     const attCount = q.slots.filter((s) => s.position === 'ATT').length;
-    if (attCount !== config.POSITIONS.ATT * 2) {
+    if (attCount !== config.POSITIONS.ATT * positionMultiplier) {
       errors.push(
-        `Quarter ${q.quarter}: Expected ${config.POSITIONS.ATT * 2} ATT slots, got ${attCount}`
+        `Quarter ${q.quarter}: Expected ${config.POSITIONS.ATT * positionMultiplier} ATT slots, got ${attCount}`
       );
     }
   });
@@ -393,14 +470,15 @@ export function validateAllocation(allocation: Allocation): string[] {
     });
 
     gkPlayers.forEach((gkPlayer) => {
-      const hasOutfieldPrimaryWave = allocation.quarters.some((q) =>
-        q.slots.some(
+      const hasOutfieldPrimaryWave = allocation.quarters.some((q) => {
+        const mode = allocation.quarterModes?.[q.quarter - 1] ?? 'split';
+        return q.slots.some(
           (s) =>
             s.player === gkPlayer &&
             s.position !== 'GK' &&
-            s.wave === 'first'
-        )
-      );
+            (s.wave === 'first' || mode === 'full')
+        );
+      });
 
       if (!hasOutfieldPrimaryWave) {
         errors.push(`Player ${gkPlayer} played GK but has no first-wave outfield block`);
