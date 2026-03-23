@@ -774,7 +774,15 @@ const listMatchesApi = async (teamIdOverride?: string): Promise<MatchRecord[]> =
   const matches: MatchRecord[] = [];
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {
-      matches.push(result.value);
+      const match = result.value;
+      // Skip fixtures with no lineup data (e.g. created but never had quarters saved)
+      if (!match.allocation.quarters || match.allocation.quarters.length === 0) {
+        console.warn(
+          `Skipping fixture ${match.id} (${match.opponent}) — no lineup data`
+        );
+        return;
+      }
+      matches.push(match);
     } else {
       console.warn(
         `Failed to load fixture ${summaries[index]?.id} (${summaries[index]?.opponent}):`,
