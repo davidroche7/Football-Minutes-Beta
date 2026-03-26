@@ -236,13 +236,13 @@ function App() {
       return invalidGKs ? null : prev;
     });
 
-    // Only auto-generate allocation if we DON'T have one yet (first time)
+    // Auto-generate allocation when player count changes
     setAllocation(prev => {
-      // Keep existing allocation - user may have edited it
-      if (prev !== null) return prev;
+      // If no allocation yet, or the player count changed, regenerate
+      const prevPlayerCount = prev ? Object.keys(prev.summary).length : 0;
+      const shouldRegenerate = prev === null || prevPlayerCount !== newPlayers.length;
 
-      // Generate new allocation only if we have enough players
-      if (newPlayers.length >= 5 && newPlayers.length <= 15) {
+      if (shouldRegenerate && newPlayers.length >= 5 && newPlayers.length <= 15) {
         try {
           return allocate(newPlayers, undefined, subPoints, quarterModes);
         } catch (err) {
@@ -251,7 +251,7 @@ function App() {
         }
       }
 
-      return null;
+      return prev;
     });
   }, [subPoints, quarterModes]); // subPoints/quarterModes needed for allocate()
 
