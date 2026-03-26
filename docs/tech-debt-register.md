@@ -1,7 +1,7 @@
 # Tech & Product Debt Register
 
 _Generated 2026-03-16 from parallel audit (Product, Architect, Dev, QA agents)_
-_Last updated: 2026-03-16_
+_Last updated: 2026-03-26_
 
 ## Completed
 
@@ -16,6 +16,10 @@ _Last updated: 2026-03-16_
 | H9 | Quarter-mode labels — "No subs" / "Sub halfway" | 2026-03-16 | fcff6ba |
 | -- | Formation change — 1 DEF + 1 MID + 2 FWD, ATT→FWD rename, backwards compat | 2026-03-16 | 4116058 |
 | -- | Copyright footer — © 2026 David Roche on login + main app | 2026-03-16 | 0f99b53 |
+| -- | DB enum migration — added MID/FWD to lineup_position, fixed migration runner | 2026-03-26 | 051feee, b4d26ba |
+| -- | Allocator randomisation — random tie-breaking so lineups vary each generation | 2026-03-26 | 0577c23 |
+| -- | Auto-regenerate allocation when player count changes | 2026-03-26 | e81946c |
+| -- | LineupPosition type updated in server/db/types.ts to include MID/FWD | 2026-03-26 | (this session) |
 
 ## Critical — Fix before next feature
 
@@ -23,6 +27,7 @@ _Last updated: 2026-03-16_
 |---|------|--------|------|-------|
 | C3 | App.tsx is a 1,174-line god component | Architect, Dev | 29 useState calls, all state + handlers in one file. Untestable, hard to refactor. | App.tsx |
 | C4 | Zero test coverage on core workflows | QA | App.tsx, AllocationGrid, EditModal, ConfirmTeamModal — none have tests. Mode switching, sub-point changes, drag-drop all untested. | Multiple |
+| C6 | CSRF token is hardcoded dev placeholder | Architect | `'dev-token'` returned for all requests in production. No real CSRF protection. | server/server.ts:86-93 |
 
 ## High — Should do soon
 
@@ -34,6 +39,10 @@ _Last updated: 2026-03-16_
 | H7 | Mode switching logic untested | QA | handleQuarterModeChange in App.tsx — summary recalculation, player deduplication, slot restructuring — zero test coverage. | App.tsx:379-467 |
 | H8 | No localStorage quota handling | Architect | localStorage.setItem() without try/catch. Silently fails when storage full. | persistence.ts:161,328,372 |
 | H10 | Persistence round-trip for quarterModes untested | QA | No test verifies save → load preserves allocation.quarterModes. Risk of modes resetting on refresh. | persistence.ts |
+| H11 | 50+ debug console.log in server code | Architect | Fixture routes and services have verbose request/response logging left from development. Noise in production logs. | server/server.ts, server/services/fixtures.ts |
+| H12 | Stale documentation — 4 obsolete deployment docs | Architect | DEPLOYMENT-BLOCKERS.md, DEPLOYMENT-READY.md, HANDOVER-TESTING-SESSION.md, RAILWAY-DEPLOY-NOW.md all reference pre-Railway/Vercel state. | Project root |
+| H13 | README.md has old formation references | Architect | Lines 148, 153 still say "2 DEF, 2 ATT". Test comments also stale. | README.md, allocator.test.ts |
+| H14 | Admin seed-ruleset uses old formation | Architect | Hardcoded `positions: { GK: 1, DEF: 2, ATT: 2 }` in seed endpoint. | server/routes/admin.ts:154 |
 
 ## Medium — Worth doing
 
@@ -68,6 +77,10 @@ _Last updated: 2026-03-16_
 | L8 | Roster test API noise | QA | roster.test.ts logs "API unavailable" fallback warnings on every run. Tests pass but output is noisy. | roster.test.ts |
 | L9 | Unused TODO in AuditLogView | Dev | Commented-out filter prop. | AuditLogView.tsx:13 |
 | L10 | Sequential API fetches | Architect | syncMatchesFromSource fetches matches then stats sequentially. Could be Promise.all. | App.tsx:162-206 |
+| L11 | One-off DB scripts cluttering scripts/db/ | Architect | fix-imported-waves (x3), diagnose-waves, check-audit-size, seed-from-json — all one-off. Should archive. | scripts/db/ |
+| L12 | export-data.mjs uses removed @vercel/postgres dep | Architect | Script references dependency not in package.json. Non-functional. | scripts/export-data.mjs |
+| L13 | SeasonStatsView has debug console.log in click handler | Dev | `console.log('Match data:', match)` left in production. | SeasonStatsView.tsx:914 |
+| L14 | NEXT-SESSION.md is 4 months stale | Architect | Dated 2025-11-24, superseded by recent work. Should be refreshed or removed. | NEXT-SESSION.md |
 
 ---
 
