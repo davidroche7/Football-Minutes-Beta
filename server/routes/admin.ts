@@ -24,37 +24,64 @@ export async function runMigrations(req: Request, res: Response) {
       );
     `);
 
-    // Check if migration already applied
-    const existing = await pool.query(
-      `SELECT filename FROM schema_migrations WHERE filename = $1`,
-      ['0001_init.sql']
-    );
-
-    if (existing.rows.length > 0) {
-      return res.json({
-        success: true,
-        message: 'Migration already applied',
-        migration: '0001_init.sql'
+    // Find migration files
+    const migrationsDir = path.join(__dirname, 'migrations');
+    if (!fs.existsSync(migrationsDir)) {
+      return res.status(500).json({
+        success: false,
+        error: `Migrations directory not found at ${migrationsDir}`,
       });
     }
 
-    // Read migration file - in production it's in dist/migrations
-    const migrationPath = path.join(__dirname, 'migrations/0001_init.sql');
-    const sql = fs.readFileSync(migrationPath, 'utf8');
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
 
-    // Run migration in transaction
-    await pool.query('BEGIN');
-    await pool.query(sql);
-    await pool.query(
-      `INSERT INTO schema_migrations (filename) VALUES ($1)`,
-      ['0001_init.sql']
-    );
-    await pool.query('COMMIT');
+    // Get already-applied migrations
+    const applied = await pool.query('SELECT filename FROM schema_migrations');
+    const appliedSet = new Set(applied.rows.map((r: { filename: string }) => r.filename));
+
+    const pending = files.filter(f => !appliedSet.has(f));
+
+    if (pending.length === 0) {
+      return res.json({
+        success: true,
+        message: 'All migrations already applied',
+        applied: files,
+      });
+    }
+
+    const results: string[] = [];
+
+    for (const filename of pending) {
+      const filePath = path.join(migrationsDir, filename);
+      const sql = fs.readFileSync(filePath, 'utf8');
+
+      // ALTER TYPE ... ADD VALUE cannot run inside a transaction in PostgreSQL,
+      // so run enum migrations outside a transaction block
+      if (sql.includes('ADD VALUE')) {
+        await pool.query(sql);
+        await pool.query(
+          'INSERT INTO schema_migrations (filename) VALUES ($1)',
+          [filename]
+        );
+      } else {
+        await pool.query('BEGIN');
+        await pool.query(sql);
+        await pool.query(
+          'INSERT INTO schema_migrations (filename) VALUES ($1)',
+          [filename]
+        );
+        await pool.query('COMMIT');
+      }
+
+      results.push(filename);
+    }
 
     res.json({
       success: true,
-      message: 'Migration applied successfully',
-      migration: '0001_init.sql'
+      message: `${results.length} migration(s) applied`,
+      applied: results,
     });
   } catch (error: any) {
     await pool.query('ROLLBACK').catch(() => {});

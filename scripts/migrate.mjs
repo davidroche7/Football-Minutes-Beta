@@ -35,43 +35,58 @@ async function migrate() {
     `);
     console.log('✓ Migrations tracking table ready');
 
-    // Check if migration already applied
-    const existing = await pool.query(
-      `SELECT filename FROM schema_migrations WHERE filename = $1`,
-      ['0001_init.sql']
-    );
+    // Find migration files
+    let migrationsDir = path.join(__dirname, '../server/db/migrations');
+    if (!fs.existsSync(migrationsDir)) {
+      migrationsDir = path.join(__dirname, '../dist/migrations');
+    }
+    if (!fs.existsSync(migrationsDir)) {
+      throw new Error(`Migrations directory not found`);
+    }
 
-    if (existing.rows.length > 0) {
-      console.log('✓ Migration 0001_init.sql already applied');
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    // Get already-applied migrations
+    const applied = await pool.query('SELECT filename FROM schema_migrations');
+    const appliedSet = new Set(applied.rows.map(r => r.filename));
+
+    const pending = files.filter(f => !appliedSet.has(f));
+
+    if (pending.length === 0) {
+      console.log('✓ All migrations already applied');
       console.log('\n✅ Database is up to date!');
       process.exit(0);
     }
 
-    // Read migration file - check both locations (dev and production)
-    let migrationPath = path.join(__dirname, '../server/db/migrations/0001_init.sql');
-    if (!fs.existsSync(migrationPath)) {
-      migrationPath = path.join(__dirname, '../dist/migrations/0001_init.sql');
+    for (const filename of pending) {
+      const filePath = path.join(migrationsDir, filename);
+      const sql = fs.readFileSync(filePath, 'utf8');
+      console.log(`🔄 Applying ${filename} (${sql.length} bytes)...`);
+
+      // ALTER TYPE ... ADD VALUE cannot run inside a transaction in PostgreSQL,
+      // so run enum migrations outside a transaction block
+      if (sql.includes('ADD VALUE')) {
+        await pool.query(sql);
+        await pool.query(
+          'INSERT INTO schema_migrations (filename) VALUES ($1)',
+          [filename]
+        );
+      } else {
+        await pool.query('BEGIN');
+        await pool.query(sql);
+        await pool.query(
+          'INSERT INTO schema_migrations (filename) VALUES ($1)',
+          [filename]
+        );
+        await pool.query('COMMIT');
+      }
+
+      console.log(`✓ ${filename} applied`);
     }
 
-    if (!fs.existsSync(migrationPath)) {
-      throw new Error(`Migration file not found at ${migrationPath}`);
-    }
-
-    const sql = fs.readFileSync(migrationPath, 'utf8');
-    console.log(`✓ Loaded migration: 0001_init.sql (${sql.length} bytes)`);
-
-    // Run migration in transaction
-    console.log('🔄 Applying migration...');
-    await pool.query('BEGIN');
-    await pool.query(sql);
-    await pool.query(
-      `INSERT INTO schema_migrations (filename) VALUES ($1)`,
-      ['0001_init.sql']
-    );
-    await pool.query('COMMIT');
-
-    console.log('✓ Migration applied successfully');
-    console.log('\n✅ Database migration complete!');
+    console.log(`\n✅ ${pending.length} migration(s) applied successfully!`);
     process.exit(0);
   } catch (error) {
     console.error('\n❌ Migration failed:', error.message);
