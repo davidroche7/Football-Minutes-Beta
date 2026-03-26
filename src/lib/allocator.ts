@@ -329,9 +329,10 @@ function selectGK(
 
     const aMin = playerMinutes.get(a) || 0;
     const bMin = playerMinutes.get(b) || 0;
-    const diff = aMin - bMin;
+    if (aMin !== bMin) return aMin - bMin;
 
-    return diff;
+    // Random tie-break for variety across attempts
+    return Math.random() - 0.5;
   });
 
   return sorted[0]!;
@@ -411,7 +412,8 @@ function comparePlayers(
   if (diff !== 0) {
     return diff;
   }
-  return a.localeCompare(b);
+  // Random tie-break so different attempts explore different valid allocations
+  return Math.random() - 0.5;
 }
 
 /**
