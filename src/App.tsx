@@ -715,9 +715,9 @@ function App() {
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.16),transparent_60%)] dark:bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.32),transparent_60%)]" />
             <div className="relative">
               <img
-                src="/crest.jpg"
-                alt="Saffron Walden Community FC crest"
-                className="mx-auto mb-3 h-16 w-16 sm:h-20 sm:w-20 rounded-xl object-cover object-top shadow-lg"
+                src="/badge.svg"
+                alt="Saffron Walden Community FC Girls U9 badge"
+                className="mx-auto mb-3 h-16 w-16 sm:h-20 sm:w-20 shadow-lg"
               />
               <h1 className="font-display text-2xl sm:text-4xl text-gray-900 dark:text-white">
                 Football Minutes
@@ -754,9 +754,9 @@ function App() {
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.16),transparent_60%)] dark:bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.32),transparent_60%)]" />
             <div className="relative">
               <img
-                src="/crest.jpg"
-                alt="Saffron Walden Community FC crest"
-                className="mx-auto mb-3 h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover object-top shadow-lg"
+                src="/badge.svg"
+                alt="Saffron Walden Community FC Girls U9 badge"
+                className="mx-auto mb-3 h-14 w-14 sm:h-16 sm:w-16 shadow-lg"
               />
               <h1 className="font-display text-2xl sm:text-4xl text-gray-900 dark:text-white">
                 Football Minutes

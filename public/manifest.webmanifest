@@ -10,9 +10,9 @@
   "theme_color": "#d21e3a",
   "icons": [
     {
-      "src": "/crest.jpg",
-      "sizes": "1179x1322",
-      "type": "image/jpeg",
+      "src": "/badge.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]
