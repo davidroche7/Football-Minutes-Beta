@@ -695,11 +695,21 @@ function App() {
     return (
       <div className="min-h-screen bg-gray-50 py-10 px-4 dark:bg-gray-900">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6">
-          <header className="text-center">
-            <h1 className="mb-2 text-4xl font-bold text-gray-900 dark:text-white">
-              Football Minutes
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+          <header className="text-center px-2">
+            <div className="mb-3 flex items-center justify-center gap-3">
+              <img
+                src="/crest.jpg"
+                alt="Saffron Walden Community FC crest"
+                className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 rounded-lg object-cover object-top shadow"
+              />
+              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+                Football Minutes
+              </h1>
+            </div>
+            <p className="text-sm sm:text-base font-medium text-gray-800 dark:text-gray-200">
+              Saffron Walden Community FC &mdash; Girls U9
+            </p>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               Track lineups, stats, and fair playing time
             </p>
           </header>
@@ -727,11 +737,21 @@ function App() {
         </div>
 
         {/* Header */}
-        <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-            Football Minutes
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+        <header className="mb-8 flex flex-col items-center gap-2 text-center px-2">
+          <div className="flex items-center gap-3">
+            <img
+              src="/crest.jpg"
+              alt="Saffron Walden Community FC crest"
+              className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 rounded-lg object-cover object-top shadow"
+            />
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+              Football Minutes
+            </h1>
+          </div>
+          <p className="text-sm sm:text-base font-medium text-gray-800 dark:text-gray-200">
+            Saffron Walden Community FC &mdash; Girls U9
+          </p>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
             Track lineups, stats, and playing time
           </p>
           <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
@@ -862,7 +882,7 @@ function App() {
 
         {activeTab === 'match' && matchSetupComplete && !matchJustSaved && (
           <>
-            <div className="mb-4 flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
+            <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 dark:bg-red-900/20">
               <div className="text-sm text-gray-700 dark:text-gray-300">
                 <span className="font-semibold text-gray-900 dark:text-white">
                   {matchDetails.date} {matchDetails.time && `at ${matchDetails.time}`}
@@ -877,7 +897,7 @@ function App() {
               </div>
               <button
                 onClick={() => setMatchSetupComplete(false)}
-                className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
               >
                 Edit Match Details
               </button>
@@ -901,7 +921,7 @@ function App() {
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 border border-green-200 dark:border-green-800/60'
                         : matchPersistenceMode === 'fallback'
                         ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-100 border border-yellow-300 dark:border-yellow-800/60'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 border border-blue-200 dark:border-blue-800/60'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-100 border border-red-200 dark:border-red-800/60'
                     }`}
                   >
                     {teamSummaryApi
@@ -982,7 +1002,7 @@ function App() {
                 <div className="mb-8 flex justify-center">
                   <button
                     onClick={handleOpenConfirm}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-lg disabled:cursor-not-allowed disabled:bg-blue-400"
+                    className="px-8 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-semibold text-lg disabled:cursor-not-allowed disabled:bg-red-400"
                     disabled={players.length < 5 || isSavingMatch}
                   >
                     Confirm Team

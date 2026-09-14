@@ -149,7 +149,7 @@ export function AuditLogView({
                 {hasChanges && (
                   <button
                     onClick={() => toggleExpand(event.id)}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     aria-label={isExpanded ? 'Hide details' : 'Show details'}
                   >
                     {isExpanded ? 'Hide' : 'Details'}

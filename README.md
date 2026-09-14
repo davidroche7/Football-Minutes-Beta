@@ -145,12 +145,12 @@ Football-Minutes-Beta/
 ### Match Structure
 
 - **4 quarters** × **10 minutes** each
-- **5 positions per quarter**: 1 GK, 2 DEF, 2 ATT
+- **5 positions per quarter**: 1 GK, 1 DEF, 1 MID, 2 FWD
 
 ### Time Blocks
 
 - **GK**: Plays the full 10-minute quarter
-- **Outfield (DEF/ATT)**: Two 5-minute shifts (0–5 minutes and 5–10 minutes)
+- **Outfield (DEF/MID/FWD)**: Two 5-minute shifts (0–5 minutes and 5–10 minutes)
 - **Sub**: Not playing (0 minutes)
 
 ### Fairness Rules

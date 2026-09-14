@@ -27,8 +27,9 @@ Then sections for:
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [001](./001-hybrid-serverless-express-architecture.md) | Hybrid Serverless + Express Architecture | Accepted | 2025-10-23 |
 | [002](./002-typescript-module-resolution.md) | TypeScript Module Resolution Strategy | Accepted | 2025-10-23 |
+
+_ADR-001 (Hybrid Serverless + Express Architecture) was removed in commit `554ee19` when the Vercel serverless path was dropped; the decision is superseded and no longer applicable._
 
 ## Creating New ADRs
 

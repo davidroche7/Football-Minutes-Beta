@@ -194,9 +194,7 @@ export async function listFixtures(options: ListFixturesOptions): Promise<Fixtur
     }
   >(sql, params);
 
-  console.log(`[listFixtures] Found ${result.rows.length} fixtures`);
   const fixtures = result.rows.map((row) => {
-    console.log(`[listFixtures] Fixture ID: "${row.id}" (type: ${typeof row.id}, length: ${row.id ? row.id.length : 'null'})`);
     const resultRow: MatchResultRow | null =
       row.result_code !== null
         ? {
@@ -213,14 +211,11 @@ export async function listFixtures(options: ListFixturesOptions): Promise<Fixtur
         : null;
     return mapFixtureSummary(row, resultRow);
   });
-  console.log(`[listFixtures] Returning ${fixtures.length} mapped fixtures`);
   return fixtures;
 }
 
 export async function getFixtureDetail(fixtureId: string): Promise<FixtureDetailDTO | null> {
-  console.log(`[getFixtureDetail] Querying fixture with ID: "${fixtureId}" (type: ${typeof fixtureId}, length: ${fixtureId.length})`);
   const fixtureResult = await query<FixtureRow>('SELECT * FROM fixture WHERE id = $1', [fixtureId]);
-  console.log(`[getFixtureDetail] Query returned ${fixtureResult.rowCount} rows for ID: "${fixtureId}"`);
   if (fixtureResult.rowCount === 0) {
     console.warn(`[getFixtureDetail] Fixture "${fixtureId}" not found in database - rowCount is 0`);
     return null;
@@ -355,17 +350,7 @@ const ensurePlayerStat = (
 };
 
 export async function createFixture(input: CreateFixtureInput): Promise<FixtureSummaryDTO> {
-  console.log('[createFixture] Called with input:');
-  console.log('  teamId:', input.teamId);
-  console.log('  opponent:', input.opponent);
-  console.log('  fixtureDate:', input.fixtureDate);
-  console.log('  venueType:', input.venueType);
-  console.log('  squad.length:', input.squad?.length ?? 0);
-  console.log('  createdBy:', input.createdBy);
-
   return withTransaction(async (client) => {
-    console.log('[createFixture] Starting transaction');
-
     const insertFixture = await client.query<FixtureRow>(
       `INSERT INTO fixture (team_id, season_id, opponent, fixture_date, venue_type, kickoff_time, notes, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -383,11 +368,8 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
     );
 
     const fixture = insertFixture.rows[0]!;
-    console.log('[createFixture] INSERT successful - fixture ID:', fixture.id);
-    console.log('[createFixture] Fixture row:', JSON.stringify(fixture, null, 2));
 
     if (input.squad.length > 0) {
-      console.log(`[createFixture] Inserting ${input.squad.length} squad members`);
       const values: unknown[] = [];
       const placeholders: string[] = [];
       input.squad.forEach((player, index) => {
@@ -401,10 +383,8 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
          VALUES ${placeholders.join(', ')}`,
         values
       );
-      console.log('[createFixture] Squad members inserted');
     }
 
-    console.log('[createFixture] Recording audit event');
     await recordFixtureAudit(client, {
       actorId: input.createdBy ?? null,
       entityId: fixture.id,
@@ -413,7 +393,6 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
       nextState: fixture,
     });
 
-    console.log('[createFixture] Transaction complete, returning summary');
     return mapFixtureSummary(fixture, null);
   });
 }
@@ -423,51 +402,35 @@ export async function updateFixtureMetadata(
   actorId: string | null,
   updates: UpdateFixtureInput
 ): Promise<FixtureSummaryDTO | null> {
-  console.log('[updateFixtureMetadata] Called with:');
-  console.log('  fixtureId:', fixtureId);
-  console.log('  actorId:', actorId);
-  console.log('  updates keys:', Object.keys(updates));
-  console.log('  updates:', JSON.stringify(updates, null, 2));
-
   const fields: string[] = [];
   const params: unknown[] = [];
 
   if (typeof updates.opponent === 'string') {
-    console.log('[updateFixtureMetadata] Adding opponent field');
     fields.push(`opponent = $${params.length + 1}`);
     params.push(updates.opponent.trim());
   }
   if (typeof updates.fixtureDate === 'string') {
-    console.log('[updateFixtureMetadata] Adding fixtureDate field');
     fields.push(`fixture_date = $${params.length + 1}`);
     params.push(updates.fixtureDate);
   }
   if (typeof updates.venueType === 'string') {
-    console.log('[updateFixtureMetadata] Adding venueType field');
     fields.push(`venue_type = $${params.length + 1}`);
     params.push(updates.venueType);
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'kickoffTime')) {
-    console.log('[updateFixtureMetadata] Adding kickoffTime field');
     fields.push(`kickoff_time = $${params.length + 1}`);
     params.push(updates.kickoffTime ?? null);
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'notes')) {
-    console.log('[updateFixtureMetadata] Adding notes field');
     fields.push(`notes = $${params.length + 1}`);
     params.push(updates.notes ?? null);
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'seasonId')) {
-    console.log('[updateFixtureMetadata] Adding seasonId field');
     fields.push(`season_id = $${params.length + 1}`);
     params.push(updates.seasonId ?? null);
   }
 
-  console.log('[updateFixtureMetadata] Fields to update:', fields);
-  console.log('[updateFixtureMetadata] Params:', params);
-
   if (fields.length === 0) {
-    console.log('[updateFixtureMetadata] No fields to update, returning current fixture');
     const current = await getFixtureDetail(fixtureId);
     return current ? current.fixture : null;
   }

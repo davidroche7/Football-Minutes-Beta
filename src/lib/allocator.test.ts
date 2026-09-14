@@ -620,11 +620,11 @@ describe('allocator', () => {
       const quarterModes: QuarterMode[] = ['full', 'split', 'full', 'split'];
       const allocation = allocate(players, undefined, undefined, quarterModes);
 
-      // Full quarters: 5 slots (1 GK + 2 DEF + 2 ATT)
+      // Full quarters: 5 slots (1 GK + 1 DEF + 1 MID + 2 FWD)
       expect(allocation.quarters[0]!.slots).toHaveLength(5);
       expect(allocation.quarters[2]!.slots).toHaveLength(5);
 
-      // Split quarters: 9 slots (1 GK + 4 DEF + 4 ATT)
+      // Split quarters: 9 slots (1 GK + 2 DEF + 2 MID + 4 FWD)
       expect(allocation.quarters[1]!.slots).toHaveLength(9);
       expect(allocation.quarters[3]!.slots).toHaveLength(9);
     });

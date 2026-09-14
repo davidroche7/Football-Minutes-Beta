@@ -148,7 +148,7 @@ export function AllocationGrid({
 
     let stateClasses = '';
     if (isDragging) {
-      stateClasses = 'opacity-40 ring-2 ring-blue-400 ring-offset-2';
+      stateClasses = 'opacity-40 ring-2 ring-red-400 ring-offset-2';
     } else if (isDropTarget) {
       stateClasses = 'ring-2 ring-green-500 ring-offset-2 scale-105 shadow-lg';
     } else if (isValidDropZone) {
@@ -224,7 +224,7 @@ export function AllocationGrid({
                         onClick={() => onQuarterModeChange(quarterNumber, 'split')}
                         className={`px-2 py-1 rounded transition-colors ${
                           mode === 'split'
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-red-600 text-white'
                             : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                         }`}
                       >
@@ -413,7 +413,7 @@ export function AllocationGrid({
                             onDragEnd={handleDragEndLocal}
                             className={`px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-sm transition-all ${
                               onSubDragStart ? 'cursor-move hover:bg-gray-300 dark:hover:bg-gray-600' : ''
-                            } ${isSubBeingDragged ? 'opacity-40 ring-2 ring-blue-400' : ''}`}
+                            } ${isSubBeingDragged ? 'opacity-40 ring-2 ring-red-400' : ''}`}
                           >
                             {sub}
                           </span>

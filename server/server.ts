@@ -204,31 +204,18 @@ app.get('/api/fixtures', async (req: Request, res: Response) => {
 
 app.post('/api/fixtures', async (req: Request, res: Response) => {
   try {
-    console.log('[POST /api/fixtures] Received request');
-    console.log('  Body keys:', Object.keys(req.body));
-    console.log('  Body:', JSON.stringify(req.body, null, 2));
-
     const teamId = requireTeamId(req);
     const actorId = getActorId(req);
-    console.log('  teamId:', teamId);
-    console.log('  actorId:', actorId);
 
-    const input = {
+    const fixture = await FixturesService.createFixture({
       ...req.body,
       teamId,
       actorId,
-    };
-    console.log('  createFixture input:', JSON.stringify(input, null, 2));
-
-    const fixture = await FixturesService.createFixture(input);
-    console.log('[POST /api/fixtures] Success - created fixture:', fixture.id);
-    console.log('  Fixture summary:', JSON.stringify(fixture, null, 2));
+    });
 
     res.status(201).json({ data: fixture });
   } catch (error) {
-    console.error('[POST /api/fixtures] ERROR:', error);
-    console.error('[POST /api/fixtures] Error message:', error instanceof Error ? error.message : 'Unknown');
-    console.error('[POST /api/fixtures] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('POST /api/fixtures error:', error);
     res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to create fixture' });
   }
 });
@@ -249,27 +236,17 @@ app.get('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
 app.patch('/api/fixtures/:fixtureId', async (req: Request, res: Response) => {
   try {
     const actorId = getActorId(req);
-    console.log('[PATCH /api/fixtures/:fixtureId] Received request:');
-    console.log('  fixtureId:', req.params.fixtureId);
-    console.log('  actorId:', actorId);
-    console.log('  body keys:', Object.keys(req.body));
-    console.log('  body:', JSON.stringify(req.body, null, 2));
-
     const fixture = await FixturesService.updateFixtureMetadata(
       req.params.fixtureId,
       actorId,
       req.body
     );
     if (!fixture) {
-      console.log('[PATCH /api/fixtures/:fixtureId] Fixture not found');
       return res.status(404).json({ error: 'Fixture not found' });
     }
-    console.log('[PATCH /api/fixtures/:fixtureId] Success');
     res.json({ data: fixture });
   } catch (error) {
-    console.error('[PATCH /api/fixtures/:fixtureId] ERROR:', error);
-    console.error('[PATCH /api/fixtures/:fixtureId] Error message:', error instanceof Error ? error.message : 'Unknown error');
-    console.error('[PATCH /api/fixtures/:fixtureId] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('PATCH /api/fixtures/:fixtureId error:', error);
     res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to update fixture' });
   }
 });
@@ -347,7 +324,8 @@ import * as StatsService from './services/stats.js';
 app.get('/api/stats/team', async (req: Request, res: Response) => {
   try {
     const teamId = requireTeamId(req);
-    const stats = await StatsService.getTeamSeasonSummary(teamId);
+    const seasonId = (req.query.seasonId as string) || undefined;
+    const stats = await StatsService.getTeamSeasonSummary(teamId, seasonId);
     res.json({ data: stats });
   } catch (error) {
     console.error('GET /api/stats/team error:', error);
@@ -358,11 +336,28 @@ app.get('/api/stats/team', async (req: Request, res: Response) => {
 app.get('/api/stats/players', async (req: Request, res: Response) => {
   try {
     const teamId = requireTeamId(req);
-    const stats = await StatsService.getPlayerSeasonSummary(teamId);
+    const seasonId = (req.query.seasonId as string) || undefined;
+    const stats = await StatsService.getPlayerSeasonSummary(teamId, seasonId);
     res.json({ data: stats });
   } catch (error) {
     console.error('GET /api/stats/players error:', error);
     res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to get player stats' });
+  }
+});
+
+// ============================================================================
+// SEASONS ROUTES
+// ============================================================================
+
+import * as SeasonsService from './services/seasons.js';
+
+app.get('/api/seasons', async (_req: Request, res: Response) => {
+  try {
+    const seasons = await SeasonsService.listSeasons();
+    res.json({ data: seasons });
+  } catch (error) {
+    console.error('GET /api/seasons error:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to list seasons' });
   }
 });
 
@@ -473,7 +468,9 @@ import fs from 'fs';
 const HOST = process.env.HOST || '0.0.0.0';
 
 /**
- * Run database migrations automatically on startup
+ * Run database migrations automatically on startup.
+ * Applies every migration file under migrations/ that isn't already recorded
+ * in schema_migrations, not just the first one.
  */
 async function autoMigrate() {
   const pool = getPool();
@@ -490,36 +487,40 @@ async function autoMigrate() {
       );
     `);
 
-    // Check if migration already applied
-    const existing = await pool.query(
-      `SELECT filename FROM schema_migrations WHERE filename = $1`,
-      ['0001_init.sql']
-    );
+    // Migration files - in production they're in dist/migrations
+    const migrationsDir = path.join(__dirname, 'migrations');
+    if (!fs.existsSync(migrationsDir)) {
+      throw new Error(`Migrations directory not found at ${migrationsDir}`);
+    }
 
-    if (existing.rows.length > 0) {
+    const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+    const applied = await pool.query('SELECT filename FROM schema_migrations');
+    const appliedSet = new Set(applied.rows.map((r: { filename: string }) => r.filename));
+    const pending = files.filter((f) => !appliedSet.has(f));
+
+    if (pending.length === 0) {
       console.log('✓ Database schema is up to date\n');
       return;
     }
 
-    // Read migration file - in production it's in dist/migrations
-    const migrationPath = path.join(__dirname, 'migrations/0001_init.sql');
-    if (!fs.existsSync(migrationPath)) {
-      throw new Error(`Migration file not found at ${migrationPath}`);
+    for (const filename of pending) {
+      const sql = fs.readFileSync(path.join(migrationsDir, filename), 'utf8');
+      console.log(`🔄 Applying migration ${filename}...`);
+
+      // ALTER TYPE ... ADD VALUE cannot run inside a transaction in PostgreSQL,
+      // so run enum migrations outside a transaction block.
+      if (sql.includes('ADD VALUE')) {
+        await pool.query(sql);
+        await pool.query(`INSERT INTO schema_migrations (filename) VALUES ($1)`, [filename]);
+      } else {
+        await pool.query('BEGIN');
+        await pool.query(sql);
+        await pool.query(`INSERT INTO schema_migrations (filename) VALUES ($1)`, [filename]);
+        await pool.query('COMMIT');
+      }
     }
 
-    const sql = fs.readFileSync(migrationPath, 'utf8');
-
-    // Run migration in transaction
-    console.log('🔄 Applying migration 0001_init.sql...');
-    await pool.query('BEGIN');
-    await pool.query(sql);
-    await pool.query(
-      `INSERT INTO schema_migrations (filename) VALUES ($1)`,
-      ['0001_init.sql']
-    );
-    await pool.query('COMMIT');
-
-    console.log('✅ Database migration complete\n');
+    console.log(`✅ ${pending.length} migration(s) applied\n`);
   } catch (error: any) {
     await pool.query('ROLLBACK').catch(() => {});
     console.error('❌ Migration failed:', error.message);

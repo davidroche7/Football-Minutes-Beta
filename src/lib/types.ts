@@ -16,11 +16,11 @@ export const POSITION_DISPLAY: Record<Position, string> = {
 
 /** Slot colour class for a position (primary/secondary variant for wave shading) */
 export const POSITION_COLOUR: Record<Position, { primary: string; secondary: string }> = {
-  GK: { primary: 'bg-yellow-100 dark:bg-yellow-900', secondary: 'bg-yellow-100 dark:bg-yellow-900' },
-  DEF: { primary: 'bg-blue-100 dark:bg-blue-900', secondary: 'bg-blue-50 dark:bg-blue-950' },
-  MID: { primary: 'bg-green-100 dark:bg-green-900', secondary: 'bg-green-50 dark:bg-green-950' },
-  FWD: { primary: 'bg-red-100 dark:bg-red-900', secondary: 'bg-red-50 dark:bg-red-950' },
-  ATT: { primary: 'bg-red-100 dark:bg-red-900', secondary: 'bg-red-50 dark:bg-red-950' },
+  GK: { primary: 'bg-amber-100 dark:bg-amber-900', secondary: 'bg-amber-50 dark:bg-amber-950' },
+  DEF: { primary: 'bg-sky-100 dark:bg-sky-900', secondary: 'bg-sky-50 dark:bg-sky-950' },
+  MID: { primary: 'bg-emerald-100 dark:bg-emerald-900', secondary: 'bg-emerald-50 dark:bg-emerald-950' },
+  FWD: { primary: 'bg-violet-100 dark:bg-violet-900', secondary: 'bg-violet-50 dark:bg-violet-950' },
+  ATT: { primary: 'bg-violet-100 dark:bg-violet-900', secondary: 'bg-violet-50 dark:bg-violet-950' },
 };
 
 /** Time block a player can be assigned (in minutes) */

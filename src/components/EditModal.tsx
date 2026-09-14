@@ -93,7 +93,7 @@ export function EditModal({
                 onClick={() => handleWaveChange('first')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   selectedWave === 'first'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-red-600 text-white'
                     : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
                 }`}
               >
@@ -103,7 +103,7 @@ export function EditModal({
                 onClick={() => handleWaveChange('second')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   selectedWave === 'second'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-red-600 text-white'
                     : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
                 }`}
               >
@@ -157,7 +157,7 @@ export function EditModal({
                   }}
                   className={`px-4 py-2 rounded-md text-left transition-colors ${
                     isCurrent
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-red-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
                   }`}
                 >

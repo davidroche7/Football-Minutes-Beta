@@ -178,7 +178,7 @@ export async function seedRuleset(req: Request, res: Response) {
       quarters: 4,
       quarterDuration: 10,
       waves: { first: 5, second: 5 },
-      positions: { GK: 1, DEF: 2, ATT: 2 },
+      positions: { GK: 1, DEF: 1, MID: 1, FWD: 2 },
       fairness: { maxVariance: 5, gkRequiresOutfield: true }
     };
 

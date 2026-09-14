@@ -8,17 +8,18 @@ export type Theme = 'light' | 'dark';
 const STORAGE_KEY = 'ffm_theme';
 
 /**
- * Get the current theme preference from localStorage
+ * Get the current theme preference from localStorage.
+ * Defaults to dark — light is available via the toggle, not the default.
  */
 export function getStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
 
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') {
     return stored;
   }
 
-  return 'light';
+  return 'dark';
 }
 
 /**

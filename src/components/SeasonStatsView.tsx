@@ -11,6 +11,7 @@ import {
   listMatches,
 } from '../lib/persistence';
 import { fetchTeamStats, fetchPlayerStats } from '../lib/statsClient';
+import { fetchSeasons, type Season } from '../lib/seasonsClient';
 import { getRules } from '../lib/rules';
 import type { RuleConfig } from '../config/rules';
 import { AllocationGrid } from './AllocationGrid';
@@ -266,6 +267,8 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     matchId: string;
     opponent: string;
   } | null>(null);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
   const [apiSeasonSummary, setApiSeasonSummary] = useState<SeasonSnapshot | null>(null);
   const [apiPlayerSummaries, setApiPlayerSummaries] = useState<PlayerSummaryRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -303,8 +306,8 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
       setStatsError(null);
       try {
         const [teamSummary, playerStats] = await Promise.all([
-          fetchTeamStats({ signal, teamId: configuredTeamId }),
-          fetchPlayerStats({ signal, teamId: configuredTeamId }),
+          fetchTeamStats({ signal, teamId: configuredTeamId, seasonId: selectedSeasonId || null }),
+          fetchPlayerStats({ signal, teamId: configuredTeamId, seasonId: selectedSeasonId || null }),
         ]);
 
         if (signal?.aborted) return;
@@ -347,8 +350,22 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         }
       }
     },
-    [configuredTeamId, perMatchTarget]
+    [configuredTeamId, perMatchTarget, selectedSeasonId]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSeasons()
+      .then((data) => {
+        if (!cancelled) setSeasons(data);
+      })
+      .catch(() => {
+        // Season list is a filter convenience — silently fall back to "All seasons".
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const refreshMatchesFromSource = useCallback(async () => {
     try {
@@ -813,6 +830,27 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
       {importError && (
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200">
           {importError}
+        </div>
+      )}
+
+      {seasons.length > 0 && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="season-filter" className="text-sm text-gray-600 dark:text-gray-400">
+            Season
+          </label>
+          <select
+            id="season-filter"
+            value={selectedSeasonId}
+            onChange={(e) => setSelectedSeasonId(e.target.value)}
+            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          >
+            <option value="">All seasons</option>
+            {seasons.map((season) => (
+              <option key={season.id} value={season.id}>
+                {season.name}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 

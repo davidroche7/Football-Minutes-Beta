@@ -250,7 +250,7 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
         return {
           label: 'Local storage',
           badgeClass:
-            'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 border border-blue-200 dark:border-blue-800/60',
+            'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-100 border border-red-200 dark:border-red-800/60',
           helper: 'Data stored in this browser until backend sync is enabled.',
         };
     }
@@ -306,13 +306,13 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
           onChange={(e) => setPlayerName(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Add player to squad"
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
         />
         <button
           onClick={handleAddPlayer}
           disabled={!playerName.trim() || isSubmitting}
           aria-label="Add player to squad"
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           {isSubmitting ? 'Adding…' : 'Add'}
         </button>
@@ -380,12 +380,12 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
                 {selectedPlayers.map((player) => (
                   <span
                     key={player.id}
-                    className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                    className="flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-200"
                   >
                     {player.name}
                     <button
                       onClick={() => toggleSelection(player.id)}
-                      className="text-blue-800 hover:text-blue-900 dark:text-blue-200 dark:hover:text-white"
+                      className="text-red-800 hover:text-red-900 dark:text-red-200 dark:hover:text-white"
                       aria-label={`Remove ${player.name} from match squad`}
                     >
                       ×
@@ -452,7 +452,7 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
                       <button
                         onClick={() => handleRestorePlayer(player.id)}
                         disabled={disabling}
-                        className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-400 dark:text-blue-300 dark:hover:text-blue-200"
+                        className="text-xs font-medium text-red-600 hover:text-red-700 disabled:text-gray-400 dark:text-red-300 dark:hover:text-red-200"
                       >
                         {disabling ? 'Restoring…' : 'Restore'}
                       </button>
