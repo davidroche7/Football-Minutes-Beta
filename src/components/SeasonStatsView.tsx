@@ -357,7 +357,15 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     let cancelled = false;
     fetchSeasons()
       .then((data) => {
-        if (!cancelled) setSeasons(data);
+        if (cancelled) return;
+        setSeasons(data);
+        // Default to the current (open-ended) season so coaches don't have to
+        // switch it every time — falls back to the most recently started one.
+        setSelectedSeasonId((current) => {
+          if (current) return current;
+          const open = data.find((s) => !s.endsOn);
+          return open?.id ?? data[0]?.id ?? '';
+        });
       })
       .catch(() => {
         // Season list is a filter convenience — silently fall back to "All seasons".
@@ -794,6 +802,10 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   );
 
   const hasMatches = matches.length > 0 || seasonSummary.matches > 0;
+  const seasonMatches = useMemo(
+    () => (selectedSeasonId ? matches.filter((m) => m.metadata?.seasonId === selectedSeasonId) : matches),
+    [matches, selectedSeasonId]
+  );
   const modalAvailablePlayers = modalState
     ? (drafts[modalState.matchId]?.players ?? []).sort((a, b) => a.localeCompare(b))
     : [];
@@ -922,9 +934,15 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         </div>
       )}
 
-      {seasonStatsTab === 'games' && hasMatches && (
+      {seasonStatsTab === 'games' && hasMatches && seasonMatches.length === 0 && (
+        <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          No games recorded for this season yet.
+        </div>
+      )}
+
+      {seasonStatsTab === 'games' && hasMatches && seasonMatches.length > 0 && (
           <section className="space-y-4">
-            {matches.map((match) => {
+            {seasonMatches.map((match) => {
               const isExpanded = expandedMatches.includes(match.id);
               const warnings = match.allocation.warnings ?? [];
               const draft = drafts[match.id];
