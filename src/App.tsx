@@ -13,7 +13,6 @@ import { SeasonStatsView } from './components/SeasonStatsView';
 import { RulesEngineView } from './components/RulesEngineView';
 import { LoginForm } from './components/LoginForm';
 import { AuditLogView } from './components/AuditLogView';
-import { ThemeToggle } from './components/ThemeToggle';
 import { allocate, updateSlot, updateSlotProperties, swapPositions, swapWithSub } from './lib/allocator';
 import {
   listMatches,
@@ -749,11 +748,6 @@ function App() {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 py-8 px-4">
       <div className="mx-auto max-w-7xl relative">
-        {/* Theme toggle in top right */}
-        <div className="absolute top-0 right-0">
-          <ThemeToggle />
-        </div>
-
         {/* Header */}
         <header className="mb-8 flex flex-col items-center gap-3 text-center px-2">
           <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 px-6 py-7 dark:border-stone-800 dark:bg-[#150f0e]">
@@ -828,7 +822,7 @@ function App() {
               setMatchSetupComplete(true);
             }} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
+                <div className="min-w-0">
                   <label htmlFor="setup-date" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     Match Date *
                   </label>
@@ -838,11 +832,11 @@ function App() {
                     value={matchDetails.date}
                     onChange={(e) => setMatchDetails({ ...matchDetails, date: e.target.value })}
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label htmlFor="setup-time" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     Kickoff Time
                   </label>
@@ -851,13 +845,13 @@ function App() {
                     type="time"
                     value={matchDetails.time}
                     onChange={(e) => setMatchDetails({ ...matchDetails, time: e.target.value })}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
+                <div className="min-w-0">
                   <label htmlFor="setup-venue" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     Venue *
                   </label>
@@ -865,7 +859,7 @@ function App() {
                     id="setup-venue"
                     value={matchDetails.venue}
                     onChange={(e) => setMatchDetails({ ...matchDetails, venue: e.target.value as typeof matchDetails.venue })}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   >
                     <option value="Home">Home</option>
                     <option value="Away">Away</option>
@@ -873,7 +867,7 @@ function App() {
                   </select>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label htmlFor="setup-opponent" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     Opponent *
                   </label>

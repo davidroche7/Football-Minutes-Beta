@@ -1097,7 +1097,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                   {isExpanded && (
                     <div className="mt-6 space-y-6">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-3">
+                        <div className="min-w-0 space-y-3">
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                             Match Date
                             <input
@@ -1109,7 +1109,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                                   date: e.target.value,
                                 }))
                               }
-                              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                              className="mt-1 w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
                           </label>
 

@@ -97,7 +97,7 @@ export function ConfirmTeamModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="match-date"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-200"
@@ -110,11 +110,11 @@ export function ConfirmTeamModal({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="match-time"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-200"
@@ -127,7 +127,7 @@ export function ConfirmTeamModal({
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
                 placeholder="e.g., 14:30"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>
