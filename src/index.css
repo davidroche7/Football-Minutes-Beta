@@ -10,6 +10,14 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+/* Without this, native controls (date/time pickers, select dropdowns) render
+   in the browser's light-theme chrome even when our own dark mode is active,
+   which throws off their sizing next to Tailwind-styled fields on mobile. */
+.dark {
+  color-scheme: dark;
 }
 
 html {

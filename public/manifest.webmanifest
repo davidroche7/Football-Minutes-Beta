@@ -1,0 +1,19 @@
+{
+  "name": "Football Minutes",
+  "short_name": "Football Minutes",
+  "description": "Saffron Walden Community FC Girls U9 — lineups, stats and fair playing time.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#150f0e",
+  "theme_color": "#d21e3a",
+  "icons": [
+    {
+      "src": "/crest.jpg",
+      "sizes": "1179x1322",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

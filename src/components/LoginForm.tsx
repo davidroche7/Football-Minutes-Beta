@@ -82,7 +82,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
+          className="w-full rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-400"
         >
           {isSubmitting ? 'Signing In…' : 'Sign In'}
         </button>

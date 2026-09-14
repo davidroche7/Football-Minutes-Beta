@@ -15,6 +15,7 @@ export interface SeasonRow {
   name: string;
   year: number;
   club: string | null;
+  age_group: string | null;
   starts_on: string | null;
   ends_on: string | null;
   created_at: string;

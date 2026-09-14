@@ -19,6 +19,7 @@ Goal: support end-to-end workflow (Player Admin → Pick a Team → Post-Match s
 - `name` (text)
 - `year` (integer)
 - `club` (text, optional)
+- `age_group` (text, optional) — e.g. "Girls U9"; the team ages up each season so this lives on Season, not Team
 - `starts_on` (date, optional)
 - `ends_on` (date, optional)
 - `created_at` (timestamptz)

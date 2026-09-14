@@ -78,6 +78,16 @@ type SeasonSnapshot = {
   losses: number;
 };
 
+const EMPTY_SEASON_SNAPSHOT: SeasonSnapshot = {
+  matches: 0,
+  goalsFor: 0,
+  goalsAgainst: 0,
+  goalDifference: 0,
+  wins: 0,
+  draws: 0,
+  losses: 0,
+};
+
 const toTitleCase = (value: string): string => {
   return value
     .trim()
@@ -560,7 +570,13 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   }, [matches]);
 
   const unsortedPlayerSummaries = apiPlayerSummaries ?? derivedPlayerSummaries;
-  const seasonSummary = apiSeasonSummary ?? derivedSeasonSummary;
+  // In API mode, a null team summary means "no matches for this season" (a real
+  // zero), not "fall back to the unfiltered local total" — that fallback is only
+  // correct when there's no API/season filter to trust in the first place.
+  const seasonSummary =
+    matchPersistenceMode === 'api'
+      ? apiSeasonSummary ?? EMPTY_SEASON_SNAPSHOT
+      : derivedSeasonSummary;
 
   // Sort player summaries based on current sort field and direction
   // Filter out players with 0 matches (test/deleted players)
@@ -859,7 +875,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             <option value="">All seasons</option>
             {seasons.map((season) => (
               <option key={season.id} value={season.id}>
-                {season.name}
+                {season.name}{season.ageGroup ? ` (${season.ageGroup})` : ''}
               </option>
             ))}
           </select>
@@ -1299,7 +1315,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                           <button
                             onClick={() => handleSaveMatch(match)}
                             disabled={isSaving || !isDirty}
-                            className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-400"
+                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-400"
                           >
                             {isSaving ? 'Saving…' : 'Save changes'}
                           </button>

@@ -177,7 +177,7 @@ export function EditModal({
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-medium"
           >
             Done
           </button>

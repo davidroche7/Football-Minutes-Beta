@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlayerInput } from './components/PlayerInput';
 import { AllocationGrid } from './components/AllocationGrid';
 import { PitchView } from './components/PitchView';
+import { SeasonInsights } from './components/SeasonInsights';
 import { PlayerSummary } from './components/PlayerSummary';
 import { EditModal } from './components/EditModal';
 import { GKSelector } from './components/GKSelector';
@@ -25,6 +26,7 @@ import { clearSession, loadStoredSession, storeSession, type AuthSession } from 
 import { ensureSeedData } from './lib/bootstrap';
 import { CONFIG } from './config/constants';
 import { fetchTeamStats, type TeamStats } from './lib/statsClient';
+import { fetchSeasons } from './lib/seasonsClient';
 import type { Allocation, Quarter, QuarterMode, PlayerSlot } from './lib/types';
 import type { MatchRecord } from './lib/persistence';
 import type { RuleConfig } from './config/rules';
@@ -100,6 +102,7 @@ function App() {
   const [subPoints, setSubPoints] = useState<number[]>([5, 5, 5, 5]);
   const [quarterModes, setQuarterModes] = useState<QuarterMode[]>(['split', 'split', 'split', 'split']);
   const [lineupView, setLineupView] = useState<'grid' | 'pitch'>('grid');
+  const [currentSeasonId, setCurrentSeasonId] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
   const [manualGKs, setManualGKs] = useState<[string, string, string, string] | null>(null);
   const [matchPersistenceMode, setMatchPersistenceMode] = useState(() => getMatchPersistenceMode());
@@ -216,6 +219,18 @@ function App() {
   useEffect(() => {
     syncMatchesFromSource();
   }, [session, syncMatchesFromSource]);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchSeasons()
+      .then((seasons) => {
+        const open = seasons.find((s) => !s.endsOn);
+        setCurrentSeasonId(open?.id ?? seasons[0]?.id ?? null);
+      })
+      .catch(() => {
+        // Season-aware nudges are best-effort — fall back to unscoped insights.
+      });
+  }, [session]);
 
   const handleMatchesChange = useCallback(
     (records: MatchRecord[]) => {
@@ -877,7 +892,7 @@ function App() {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="submit"
-                  className="rounded-md bg-green-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                  className="rounded-md bg-red-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
                 >
                   Continue to Player Selection
                 </button>
@@ -992,11 +1007,18 @@ function App() {
               onGKsChange={handleGKsChange}
             />
 
+            <SeasonInsights
+              matches={matches}
+              currentSeasonId={currentSeasonId}
+              currentAllocation={allocation}
+              currentPlayers={players}
+            />
+
             {players.length >= 5 && players.length <= 15 && !allocation && (
               <div className="text-center mb-8">
                 <button
                   onClick={handleGenerateAllocation}
-                  className="px-8 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-lg font-semibold"
+                  className="px-8 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-lg font-semibold"
                 >
                   Generate Allocation
                 </button>
@@ -1172,7 +1194,7 @@ function App() {
                     venue: 'Home',
                   });
                 }}
-                className="rounded-md bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
+                className="rounded-md bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
               >
                 Create Another Match
               </button>
