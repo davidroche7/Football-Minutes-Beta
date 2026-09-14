@@ -872,7 +872,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             onClick={() => setSeasonStatsTab('games')}
             className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
               seasonStatsTab === 'games'
-                ? 'border-green-500 text-green-600 dark:text-green-400'
+                ? 'border-red-500 text-red-600 dark:text-red-400'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
@@ -882,7 +882,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
             onClick={() => setSeasonStatsTab('players')}
             className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors ${
               seasonStatsTab === 'players'
-                ? 'border-green-500 text-green-600 dark:text-green-400'
+                ? 'border-red-500 text-red-600 dark:text-red-400'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
@@ -892,34 +892,46 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
       </div>
 
       {seasonStatsTab === 'games' && hasMatches && (
-        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+        <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+          <h3 className="mb-4 font-display text-lg text-gray-900 dark:text-white">
             Season Snapshot
           </h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-md bg-gray-50 px-4 py-3 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200">
+            <div className="group rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-gray-800 transition-all hover:-translate-y-0.5 hover:border-red-300 dark:border-stone-700 dark:bg-stone-800/60 dark:text-gray-200 dark:hover:border-red-800">
+              <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-md bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+              </div>
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Matches Played
               </p>
-              <p className="mt-1 text-2xl font-semibold">{seasonSummary.matches}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{seasonSummary.matches}</p>
             </div>
-            <div className="rounded-md bg-gray-50 px-4 py-3 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200">
+            <div className="group rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-gray-800 transition-all hover:-translate-y-0.5 hover:border-red-300 dark:border-stone-700 dark:bg-stone-800/60 dark:text-gray-200 dark:hover:border-red-800">
+              <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-md bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v4a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V4Z"/><path d="M8 20h8M12 12v8M4 6H2v2a3 3 0 0 0 3 3M20 6h2v2a3 3 0 0 0-3 3"/></svg>
+              </div>
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Goals For
               </p>
-              <p className="mt-1 text-2xl font-semibold">{seasonSummary.goalsFor}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{seasonSummary.goalsFor}</p>
             </div>
-            <div className="rounded-md bg-gray-50 px-4 py-3 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200">
+            <div className="group rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-gray-800 transition-all hover:-translate-y-0.5 hover:border-red-300 dark:border-stone-700 dark:bg-stone-800/60 dark:text-gray-200 dark:hover:border-red-800">
+              <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-md bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v4a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V4Z" transform="rotate(180 12 12)"/><path d="M8 4h8M12 12V4M4 18h2v-2a3 3 0 0 0-3-3M20 18h-2v-2a3 3 0 0 1 3-3"/></svg>
+              </div>
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Goals Against
               </p>
-              <p className="mt-1 text-2xl font-semibold">{seasonSummary.goalsAgainst}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{seasonSummary.goalsAgainst}</p>
             </div>
-            <div className="rounded-md bg-gray-50 px-4 py-3 text-gray-800 dark:bg-gray-900/50 dark:text-gray-200">
+            <div className="group rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-gray-800 transition-all hover:-translate-y-0.5 hover:border-red-300 dark:border-stone-700 dark:bg-stone-800/60 dark:text-gray-200 dark:hover:border-red-800">
+              <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-md bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M5 8l7-6 7 6"/></svg>
+              </div>
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Goal Difference
               </p>
-              <p className="mt-1 text-2xl font-semibold">{seasonSummary.goalDifference}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{seasonSummary.goalDifference}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Record: {seasonSummary.wins}-{seasonSummary.draws}-{seasonSummary.losses}
               </p>

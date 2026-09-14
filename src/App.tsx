@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlayerInput } from './components/PlayerInput';
 import { AllocationGrid } from './components/AllocationGrid';
+import { PitchView } from './components/PitchView';
 import { PlayerSummary } from './components/PlayerSummary';
 import { EditModal } from './components/EditModal';
 import { GKSelector } from './components/GKSelector';
@@ -98,6 +99,7 @@ function App() {
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [subPoints, setSubPoints] = useState<number[]>([5, 5, 5, 5]);
   const [quarterModes, setQuarterModes] = useState<QuarterMode[]>(['split', 'split', 'split', 'split']);
+  const [lineupView, setLineupView] = useState<'grid' | 'pitch'>('grid');
   const [error, setError] = useState<string>('');
   const [manualGKs, setManualGKs] = useState<[string, string, string, string] | null>(null);
   const [matchPersistenceMode, setMatchPersistenceMode] = useState(() => getMatchPersistenceMode());
@@ -693,25 +695,26 @@ function App() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50 py-10 px-4 dark:bg-gray-900">
+      <div className="min-h-screen bg-stone-50 py-10 px-4 dark:bg-stone-950">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6">
-          <header className="text-center px-2">
-            <div className="mb-3 flex items-center justify-center gap-3">
+          <header className="relative w-full overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 px-6 py-8 text-center dark:border-stone-800 dark:bg-[#150f0e]">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.16),transparent_60%)] dark:bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.32),transparent_60%)]" />
+            <div className="relative">
               <img
                 src="/crest.jpg"
                 alt="Saffron Walden Community FC crest"
-                className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 rounded-lg object-cover object-top shadow"
+                className="mx-auto mb-3 h-16 w-16 sm:h-20 sm:w-20 rounded-xl object-cover object-top shadow-lg"
               />
-              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+              <h1 className="font-display text-2xl sm:text-4xl text-gray-900 dark:text-white">
                 Football Minutes
               </h1>
+              <p className="mt-1 text-sm sm:text-base font-semibold text-red-700 dark:text-red-300">
+                Saffron Walden Community FC &mdash; Girls U9
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                Track lineups, stats, and fair playing time
+              </p>
             </div>
-            <p className="text-sm sm:text-base font-medium text-gray-800 dark:text-gray-200">
-              Saffron Walden Community FC &mdash; Girls U9
-            </p>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-              Track lineups, stats, and fair playing time
-            </p>
           </header>
           <LoginForm
             onSuccess={(authSession) => {
@@ -729,7 +732,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 py-8 px-4">
       <div className="mx-auto max-w-7xl relative">
         {/* Theme toggle in top right */}
         <div className="absolute top-0 right-0">
@@ -737,24 +740,27 @@ function App() {
         </div>
 
         {/* Header */}
-        <header className="mb-8 flex flex-col items-center gap-2 text-center px-2">
-          <div className="flex items-center gap-3">
-            <img
-              src="/crest.jpg"
-              alt="Saffron Walden Community FC crest"
-              className="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 rounded-lg object-cover object-top shadow"
-            />
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              Football Minutes
-            </h1>
+        <header className="mb-8 flex flex-col items-center gap-3 text-center px-2">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 px-6 py-7 dark:border-stone-800 dark:bg-[#150f0e]">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.16),transparent_60%)] dark:bg-[radial-gradient(120%_100%_at_50%_0%,rgba(210,30,58,0.32),transparent_60%)]" />
+            <div className="relative">
+              <img
+                src="/crest.jpg"
+                alt="Saffron Walden Community FC crest"
+                className="mx-auto mb-3 h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover object-top shadow-lg"
+              />
+              <h1 className="font-display text-2xl sm:text-4xl text-gray-900 dark:text-white">
+                Football Minutes
+              </h1>
+              <p className="mt-1 text-sm sm:text-base font-semibold text-red-700 dark:text-red-300">
+                Saffron Walden Community FC &mdash; Girls U9
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                Track lineups, stats, and playing time
+              </p>
+            </div>
           </div>
-          <p className="text-sm sm:text-base font-medium text-gray-800 dark:text-gray-200">
-            Saffron Walden Community FC &mdash; Girls U9
-          </p>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            Track lineups, stats, and playing time
-          </p>
-          <div className="mt-2 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
             <span>
               Signed in as <span className="font-semibold">{session.username}</span>
             </span>
@@ -1009,19 +1015,48 @@ function App() {
                   </button>
                 </div>
 
+                <div className="mb-4 flex justify-center">
+                  <div className="inline-flex rounded-full bg-gray-200 p-1 dark:bg-gray-700">
+                    <button
+                      onClick={() => setLineupView('grid')}
+                      className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                        lineupView === 'grid'
+                          ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      Grid
+                    </button>
+                    <button
+                      onClick={() => setLineupView('pitch')}
+                      className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                        lineupView === 'pitch'
+                          ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      Pitch
+                    </button>
+                  </div>
+                </div>
+
                 <div className="mb-8">
-                  <AllocationGrid
-                    allocation={allocation}
-                    allPlayers={players}
-                    onSlotClick={handleSlotClick}
-                    onDragStart={handleDragStart}
-                    onSubDragStart={handleSubDragStart}
-                    onDrop={handleDrop}
-                    onDragEnd={handleDragEnd}
-                    onSubPointChange={handleSubPointChange}
-                    quarterModes={quarterModes}
-                    onQuarterModeChange={handleQuarterModeChange}
-                  />
+                  {lineupView === 'grid' ? (
+                    <AllocationGrid
+                      allocation={allocation}
+                      allPlayers={players}
+                      onSlotClick={handleSlotClick}
+                      onDragStart={handleDragStart}
+                      onSubDragStart={handleSubDragStart}
+                      onDrop={handleDrop}
+                      onDragEnd={handleDragEnd}
+                      onSubPointChange={handleSubPointChange}
+                      quarterModes={quarterModes}
+                      onQuarterModeChange={handleQuarterModeChange}
+                    />
+                  ) : (
+                    <PitchView allocation={allocation} allPlayers={players} quarterModes={quarterModes} />
+                  )}
                 </div>
 
                 <div className="mb-8">
