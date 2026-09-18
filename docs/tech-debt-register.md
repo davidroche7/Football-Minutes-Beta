@@ -43,6 +43,11 @@ _Last updated: 2026-03-26_
 | H12 | Stale documentation — 4 obsolete deployment docs | Architect | DEPLOYMENT-BLOCKERS.md, DEPLOYMENT-READY.md, HANDOVER-TESTING-SESSION.md, RAILWAY-DEPLOY-NOW.md all reference pre-Railway/Vercel state. | Project root |
 | H13 | README.md has old formation references | Architect | Lines 148, 153 still say "2 DEF, 2 ATT". Test comments also stale. | README.md, allocator.test.ts |
 | H14 | Admin seed-ruleset uses old formation | Architect | Hardcoded `positions: { GK: 1, DEF: 2, ATT: 2 }` in seed endpoint. | server/routes/admin.ts:154 |
+| H15 | Match save is a non-atomic 3-step write | Architect | `saveMatchApi` does create fixture → PUT lineup → lock with no rollback. A failure part-way leaves a lineup-less fixture, and the catch silently falls back to localStorage on the coach's device. Likely cause of the stray 2026-03-21 DRAFT rows. Fix: single server endpoint that creates fixture + lineup + lock in one transaction. | src/lib/persistence.ts (saveMatchApi) |
+| H16 | Lineup-less fixtures silently skipped in the games list | Architect | `listMatchesApi` drops any fixture with zero quarters with only a console.warn, so a partial save looks like a vanished match while the stats views still count it. Should surface as a visible "incomplete match" instead. | src/lib/persistence.ts:778 |
+| H17 | Season filters hide NULL-season fixtures | QA | Games list and season insights compare `metadata.seasonId === selectedSeason`, so any NULL-season row disappears. New rows no longer get NULL (ac94ece) but the filters should fall back to the team season like the stats views do. Sept 2026 incident: first 2026-27 match hidden. | SeasonStatsView.tsx:822, SeasonInsights.tsx:31 |
+| H18 | Lineup PUT re-reads via pool, not transaction client | Architect | `replaceFixtureLineup` selects the lineup with `query` (pool) inside `withTransaction`, so the uncommitted rows aren't visible and the response can come back empty. Stored data is unaffected. | server/services/fixtures.ts (replaceFixtureLineup) |
+| H19 | 3 failing tests in roster.test.ts | QA | Fail on clean main (pre-existing): add / remove / restore player tests, in an environment where the roster API falls back to local storage after CSRF errors. Suite is 86/89. | src/lib/roster.test.ts |
 
 ## Medium — Worth doing
 
