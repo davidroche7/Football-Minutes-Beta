@@ -353,7 +353,7 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
   return withTransaction(async (client) => {
     const insertFixture = await client.query<FixtureRow>(
       `INSERT INTO fixture (team_id, season_id, opponent, fixture_date, venue_type, kickoff_time, notes, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       VALUES ($1, COALESCE($2::uuid, (SELECT season_id FROM team WHERE id = $1)), $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         input.teamId,
