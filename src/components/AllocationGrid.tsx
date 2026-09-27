@@ -1,4 +1,5 @@
-import { useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent } from 'react';
+import { toPng } from 'html-to-image';
 import type { Allocation, Quarter, QuarterMode, PlayerSlot } from '../lib/types';
 import { POSITION_DISPLAY, POSITION_COLOUR } from '../lib/types';
 import { getSubsForQuarter } from '../lib/allocator';
@@ -45,6 +46,49 @@ export function AllocationGrid({
     quarter: null,
   });
   const [dropTarget, setDropTarget] = useState<{ quarter: Quarter; slotIndex: number } | null>(null);
+  const [isSharingPhoto, setIsSharingPhoto] = useState(false);
+  const quartersGridRef = useRef<HTMLDivElement>(null);
+
+  // Renders the 4 quarter cards as one PNG and hands it to the OS share sheet
+  // (WhatsApp, Messages, etc). Forced to 2 columns for the capture regardless
+  // of the live responsive layout, so the shared photo is always a readable
+  // 2x2 rather than a tall single-column stack on a phone screen.
+  const handleShareAsPhoto = async () => {
+    const node = quartersGridRef.current;
+    if (!node || isSharingPhoto) return;
+
+    setIsSharingPhoto(true);
+    const previousColumns = node.style.gridTemplateColumns;
+    node.style.gridTemplateColumns = 'repeat(2, 1fr)';
+
+    try {
+      const dataUrl = await toPng(node, { backgroundColor: '#ffffff', pixelRatio: 2 });
+      node.style.gridTemplateColumns = previousColumns;
+
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `lineup-q1-4.png`, { type: 'image/png' });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Quarter Lineup' });
+      } else {
+        // Desktop / unsupported browsers: fall back to a plain download so it
+        // can still be attached to WhatsApp Web (or anywhere else) by hand.
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'lineup-q1-4.png';
+        link.click();
+      }
+    } catch (err) {
+      // AbortError when the user just cancels the native share sheet — not a real failure.
+      if (!(err instanceof Error) || err.name !== 'AbortError') {
+        console.error('Share as photo failed', err);
+      }
+    } finally {
+      node.style.gridTemplateColumns = previousColumns;
+      setIsSharingPhoto(false);
+    }
+  };
+
   const handleSlotClick = (quarter: Quarter, slotIndex: number, slot: PlayerSlot) => {
     if (onSlotClick) {
       onSlotClick(quarter, slotIndex, slot);
@@ -170,7 +214,7 @@ export function AllocationGrid({
   };
 
   return (
-    <div id="allocation-grid-print" className="w-full max-w-6xl mx-auto p-3 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+    <div className="w-full max-w-6xl mx-auto p-3 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Quarter Allocation
@@ -179,16 +223,17 @@ export function AllocationGrid({
           {onSlotClick && <p>Click any slot to edit</p>}
           {onDragStart && <p className="hidden sm:block">Drag outfield players to swap</p>}
           <button
-            onClick={() => window.print()}
-            className="print:hidden px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium"
-            title="Opens your browser's print dialog — choose Save as PDF, or your device's share sheet, to export a photo"
+            onClick={handleShareAsPhoto}
+            disabled={isSharingPhoto}
+            className="px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-wait"
+            title="Turns all 4 quarters into one photo you can share (e.g. on WhatsApp)"
           >
-            Export / Print
+            {isSharingPhoto ? 'Preparing…' : 'Share as Photo'}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div ref={quartersGridRef} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {allocation.quarters.map((quarter) => {
           const quarterNumber = quarter.quarter;
           const subs = getSubsForQuarter(allocation, quarterNumber, allPlayers);

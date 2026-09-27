@@ -41,26 +41,3 @@ body {
   font-weight: 400;
   letter-spacing: 0.01em;
 }
-
-/* Export/print: isolate the allocation grid so "Export / Print" (AllocationGrid's
-   window.print()) produces a clean sheet the coach can Save as PDF or share as an
-   image, without dragging in the header/nav/other tabs around it. */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #allocation-grid-print,
-  #allocation-grid-print * {
-    visibility: visible;
-  }
-  #allocation-grid-print {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    box-shadow: none;
-  }
-  #allocation-grid-print .grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
