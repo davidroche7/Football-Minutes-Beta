@@ -57,6 +57,10 @@ export function AllocationGrid({
   // controls (mode toggle, sub-point stepper) are stripped via `filter` —
   // they mean nothing in a static photo and just eat space.
   const CAPTURE_WIDTH_PX = 1400;
+  // Matches the app's dark:bg-gray-800 surface — the app is dark-mode only (src/lib/theme.ts),
+  // and the quarter cards themselves have a transparent background, so without this the capture
+  // fell through to whatever backgroundColor we passed here regardless of the app's real theme.
+  const CAPTURE_BACKGROUND = '#1f2937';
 
   const handleShareAsPhoto = async () => {
     const node = quartersGridRef.current;
@@ -77,7 +81,7 @@ export function AllocationGrid({
 
     try {
       const dataUrl = await toPng(node, {
-        backgroundColor: '#ffffff',
+        backgroundColor: CAPTURE_BACKGROUND,
         pixelRatio: 2,
         width: CAPTURE_WIDTH_PX,
         filter: (el) => !(el instanceof HTMLElement && el.dataset.captureHide === 'true'),
