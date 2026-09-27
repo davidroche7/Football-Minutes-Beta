@@ -50,20 +50,39 @@ export function AllocationGrid({
   const quartersGridRef = useRef<HTMLDivElement>(null);
 
   // Renders the 4 quarter cards as one PNG and hands it to the OS share sheet
-  // (WhatsApp, Messages, etc). Forced to 2 columns for the capture regardless
-  // of the live responsive layout, so the shared photo is always a readable
-  // 2x2 rather than a tall single-column stack on a phone screen.
+  // (WhatsApp, Messages, etc). On a phone the grid is normally a single narrow
+  // column, so for the capture we force it wide enough for a readable 2x2 —
+  // forcing column count alone squeezes each card to the phone's full width
+  // ÷ 2 (~190px), which is why text was overlapping/wrapping. Editing-only
+  // controls (mode toggle, sub-point stepper) are stripped via `filter` —
+  // they mean nothing in a static photo and just eat space.
+  const CAPTURE_WIDTH_PX = 1400;
+
   const handleShareAsPhoto = async () => {
     const node = quartersGridRef.current;
     if (!node || isSharingPhoto) return;
 
     setIsSharingPhoto(true);
+    const previousWidth = node.style.width;
     const previousColumns = node.style.gridTemplateColumns;
+    node.style.width = `${CAPTURE_WIDTH_PX}px`;
     node.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    // Let the browser reflow at the new width before we read it into the capture.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const restoreLayout = () => {
+      node.style.width = previousWidth;
+      node.style.gridTemplateColumns = previousColumns;
+    };
 
     try {
-      const dataUrl = await toPng(node, { backgroundColor: '#ffffff', pixelRatio: 2 });
-      node.style.gridTemplateColumns = previousColumns;
+      const dataUrl = await toPng(node, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        width: CAPTURE_WIDTH_PX,
+        filter: (el) => !(el instanceof HTMLElement && el.dataset.captureHide === 'true'),
+      });
+      restoreLayout();
 
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `lineup-q1-4.png`, { type: 'image/png' });
@@ -84,7 +103,7 @@ export function AllocationGrid({
         console.error('Share as photo failed', err);
       }
     } finally {
-      node.style.gridTemplateColumns = previousColumns;
+      restoreLayout();
       setIsSharingPhoto(false);
     }
   };
@@ -258,7 +277,7 @@ export function AllocationGrid({
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                   Q{quarter.quarter}
                 </h3>
-                <div className="flex flex-wrap items-center gap-2">
+                <div data-capture-hide="true" className="flex flex-wrap items-center gap-2">
                   {/* Mode toggle */}
                   {onQuarterModeChange && (
                     <div className="flex items-center gap-1 text-xs">
