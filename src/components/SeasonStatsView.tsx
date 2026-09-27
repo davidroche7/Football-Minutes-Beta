@@ -1477,7 +1477,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
 
       {seasonStatsTab === 'players' && hasMatches && (
         <section className="mt-6">
-          <PlayerHeatMap matches={matches} />
+          <PlayerHeatMap matches={seasonMatches} />
         </section>
       )}
 

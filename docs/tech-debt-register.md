@@ -1,7 +1,20 @@
 # Tech & Product Debt Register
 
 _Generated 2026-03-16 from parallel audit (Product, Architect, Dev, QA agents)_
-_Last updated: 2026-03-26_
+_Last updated: 2026-09-27_
+
+## New — User feedback (2026-09-27)
+
+_Reported by the coach using the mobile PWA. All are display/read-only — none touch the save path or write to persistence, so there's no data-loss risk from any of them._
+
+_W/D/L badge item (originally P2) was removed from this list: confirmed with the coach it's a deliberate manual dropdown, not a bug — no change needed._
+
+| # | Item | Status | Effort | Risk | Notes |
+|---|------|--------|--------|------|-------|
+| F1 | Show match-total minutes, not quarter minutes | **Done** (2026-09-27) | Small | Low | `AllocationGrid.tsx`: GK/outfield slot labels and the subs list now show `allocation.summary[player]` (running match total) instead of `slot.minutes` (that quarter only). 89/89 tests pass, `tsc --noEmit` clean. |
+| F2 | Heat map: toggle this season vs last season | **Done** (2026-09-27) | Small | Low | Turned out smaller than scoped — `SeasonStatsView.tsx` already had a season picker and a `seasonMatches` memo (from the season-archiving work) sitting right above the heat map; it just wasn't wired in. One-line fix: `<PlayerHeatMap matches={seasonMatches} />` instead of `matches`. No new UI, no season-utils changes needed. |
+| F3 | View all 4 quarters side-by-side + export as photo | **Done** (2026-09-27) | Medium | Low | (a) Added `xl:grid-cols-4` so all 4 quarters show in one row on wide/desktop viewports (was capped at 2). (b) "Export/Print" button in `AllocationGrid.tsx` calls `window.print()`; new `@media print` block in `index.css` isolates `#allocation-grid-print` (hides nav/header/other tabs) so the coach's browser/PWA "Save as PDF" or share sheet produces a clean image of just the grid, forced to 2 columns for print legibility. Zero new dependencies — no `html2canvas`, no ADR needed. |
+| F4 | Season snapshot doesn't split home vs away | **On hold** — coach to confirm scope | Medium | Low–Medium | **Fact:** `goalsFor`/`goalsAgainst` (client) and `team_goals`/`opponent_goals` (DB view `team_season_summary`) are already team-perspective, not literal home/away scores — checked the view SQL, the local aggregation, and `season-awards.mjs`; all three are consistently venue-agnostic. No swap/corruption bug found. `SeasonSnapshot` (`SeasonStatsView.tsx:71-79`) has no venue field at all. **Inference:** what's actually missing is a home/away *breakdown* (e.g. "Home: 4W 1D · Away: 2W 2D 1L") — venue is captured per fixture (`venue_type`) but never rolled up into the snapshot. Needs the same aggregation added in two places that must stay in sync: the local `derivedSeasonSummary` calc and the `team_season_summary` SQL view (additive `CREATE OR REPLACE VIEW`, no migration of existing data). Deferred at the coach's request — revisit once scope is confirmed. |
 
 ## Completed
 

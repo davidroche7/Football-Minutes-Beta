@@ -170,18 +170,25 @@ export function AllocationGrid({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-3 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+    <div id="allocation-grid-print" className="w-full max-w-6xl mx-auto p-3 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Quarter Allocation
         </h2>
-        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 sm:text-right">
+        <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 sm:text-right">
           {onSlotClick && <p>Click any slot to edit</p>}
           {onDragStart && <p className="hidden sm:block">Drag outfield players to swap</p>}
+          <button
+            onClick={() => window.print()}
+            className="print:hidden px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium"
+            title="Opens your browser's print dialog — choose Save as PDF, or your device's share sheet, to export a photo"
+          >
+            Export / Print
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {allocation.quarters.map((quarter) => {
           const quarterNumber = quarter.quarter;
           const subs = getSubsForQuarter(allocation, quarterNumber, allPlayers);
@@ -282,7 +289,7 @@ export function AllocationGrid({
                               {slot.player}
                             </span>
                             <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {slot.minutes} min
+                              {allocation.summary[slot.player] ?? slot.minutes} min total
                             </span>
                           </div>
                         </div>
@@ -377,7 +384,7 @@ export function AllocationGrid({
                                   )}
                                 </span>
                                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                                  {slot.minutes} min
+                                  {allocation.summary[slot.player] ?? slot.minutes} min total
                                 </span>
                               </div>
                             </div>
@@ -415,7 +422,7 @@ export function AllocationGrid({
                               onSubDragStart ? 'cursor-move hover:bg-gray-300 dark:hover:bg-gray-600' : ''
                             } ${isSubBeingDragged ? 'opacity-40 ring-2 ring-red-400' : ''}`}
                           >
-                            {sub}
+                            {sub} · {allocation.summary[sub] ?? 0} min total
                           </span>
                         );
                       })}
