@@ -30,6 +30,15 @@ export interface TeamRow {
   updated_at: string;
 }
 
+/** Reds / Blacks squads. A fixture is REDS or BLACKS (or NULL if pre-split); a player may be BOTH. */
+export type SquadGroup = 'REDS' | 'BLACKS' | 'BOTH';
+
+export const parseSquadGroup = (value: unknown, allowBoth: boolean): SquadGroup | null => {
+  if (value === null) return null;
+  if (value === 'REDS' || value === 'BLACKS' || (allowBoth && value === 'BOTH')) return value;
+  throw new Error(`Invalid squad: ${String(value)}`);
+};
+
 export interface PlayerRow {
   id: string;
   team_id: string;
@@ -38,6 +47,7 @@ export interface PlayerRow {
   squad_number: number | null;
   status: PlayerStatus;
   notes: string | null;
+  squad_group: SquadGroup | null;
   created_at: string;
   updated_at: string;
   removed_at: string | null;
@@ -56,6 +66,7 @@ export interface FixtureRow {
   notes: string | null;
   locked_at: string | null;
   finalised_at: string | null;
+  squad_group: SquadGroup | null;
   created_at: string;
   updated_at: string;
 }
