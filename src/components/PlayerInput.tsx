@@ -68,7 +68,7 @@ export function PlayerInput({
 }: PlayerInputProps) {
   const [playerName, setPlayerName] = useState('');
   const [newPlayerSquad, setNewPlayerSquad] = useState<PlayerSquad | null>(null);
-  const [squadSavingId, setSquadSavingId] = useState<string | null>(null);
+  const [squadSavingIds, setSquadSavingIds] = useState<ReadonlySet<string>>(() => new Set());
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,22 +140,6 @@ export function PlayerInput({
     };
   }, [refreshPersistenceState]);
 
-  // Choosing (or switching) squad drops any picked players who aren't in it.
-  useEffect(() => {
-    if (!squad || !showMatchSelection) return;
-    const dropped = roster.filter(
-      (player) => selectedPlayerIds.includes(player.id) && !isEligible(player.squadGroup, squad)
-    );
-    if (dropped.length === 0) return;
-    const droppedIds = new Set(dropped.map((player) => player.id));
-    setSelectedPlayerIds((prev) => prev.filter((id) => !droppedIds.has(id)));
-    setMessage(
-      `${dropped.map((player) => player.name).join(', ')} ${dropped.length === 1 ? 'is' : 'are'} not in the ${
-        SQUAD_LABEL[squad]
-      } squad and ${dropped.length === 1 ? 'was' : 'were'} removed from this match.`
-    );
-  }, [squad, roster, selectedPlayerIds, showMatchSelection]);
-
   useEffect(() => {
     if (!showMatchSelection) {
       onPlayersChange([]);
@@ -185,7 +169,11 @@ export function PlayerInput({
       (p) => p.name.toLowerCase() === trimmed.toLowerCase() && p.removedAt === null
     );
     if (existingPlayer) {
-      setError(`Player "${trimmed}" already exists in squad`);
+      setError(
+        showMatchSelection && squad && !isEligible(existingPlayer.squadGroup, squad)
+          ? `${existingPlayer.name} is tagged ${SQUAD_LABEL[existingPlayer.squadGroup!]}. Change their squad under Management to pick them for ${SQUAD_LABEL[squad]}.`
+          : `Player "${trimmed}" already exists in squad`
+      );
       return;
     }
 
@@ -261,9 +249,9 @@ export function PlayerInput({
   };
 
   const handleSquadChange = async (playerId: string, squadGroup: PlayerSquad | null) => {
-    if (squadSavingId) return;
+    if (squadSavingIds.has(playerId)) return;
 
-    setSquadSavingId(playerId);
+    setSquadSavingIds((prev) => new Set(prev).add(playerId));
     setError(null);
     setMessage(null);
     try {
@@ -279,7 +267,11 @@ export function PlayerInput({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update squad');
     } finally {
-      setSquadSavingId(null);
+      setSquadSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(playerId);
+        return next;
+      });
       refreshPersistenceState();
     }
   };
@@ -461,7 +453,7 @@ export function PlayerInput({
                           id={`squad-${player.id}`}
                           label={`Squad for ${player.name}`}
                           value={player.squadGroup}
-                          disabled={squadSavingId === player.id}
+                          disabled={squadSavingIds.has(player.id)}
                           onChange={(value) => handleSquadChange(player.id, value)}
                         />
                       </div>
