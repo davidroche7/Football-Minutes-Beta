@@ -17,6 +17,7 @@ import type { RuleConfig } from '../config/rules';
 import { AllocationGrid } from './AllocationGrid';
 import { EditModal } from './EditModal';
 import { PlayerHeatMap } from './PlayerHeatMap';
+import { filterBySquad, formatScore, isSquad, matchLabel, SQUAD_LABEL, SQUADS, type Squad } from '../lib/squads';
 import { TEAM_ID } from '../config/environment';
 
 interface SeasonStatsViewProps {
@@ -51,6 +52,7 @@ interface ResultDraft {
 interface MatchDraft {
   date: string;
   opponent: string;
+  squad: Squad | null;
   result: ResultDraft;
   allocation: Allocation;
   players: string[];
@@ -211,6 +213,7 @@ const createDraftFromMatch = (match: MatchRecord): MatchDraft | null => {
     return {
       date: match.date,
       opponent: match.opponent,
+      squad: match.squad ?? null,
       result: {
         venue: normaliseVenueOption(match.result?.venue),
         outcome: normaliseOutcomeOption(match.result?.result),
@@ -244,6 +247,7 @@ const normaliseAllocationForSave = (allocation: Allocation): Allocation => {
 const isDraftDirty = (match: MatchRecord, draft: MatchDraft): boolean => {
   if (match.date !== draft.date) return true;
   if (match.opponent !== draft.opponent) return true;
+  if ((match.squad ?? null) !== draft.squad) return true;
 
   const savedResultString = JSON.stringify(match.result ?? null);
   const draftResultString = JSON.stringify(buildResultFromDraft(draft.result));
@@ -279,6 +283,8 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   } | null>(null);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
+  // '' = Overall (every match, including those played before the squad split)
+  const [selectedSquad, setSelectedSquad] = useState<Squad | ''>('');
   const [apiSeasonSummary, setApiSeasonSummary] = useState<SeasonSnapshot | null>(null);
   const [apiPlayerSummaries, setApiPlayerSummaries] = useState<PlayerSummaryRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -294,7 +300,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const rules = useMemo(() => getRules(), []);
-  const perMatchTarget = rules.quarterDuration * rules.quarters;
 
   const refreshMatchPersistenceState = useCallback(() => {
     const mode = getMatchPersistenceMode();
@@ -360,7 +365,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         }
       }
     },
-    [configuredTeamId, perMatchTarget, selectedSeasonId]
+    [configuredTeamId, selectedSeasonId]
   );
 
   useEffect(() => {
@@ -433,10 +438,19 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     setDrafts(nextDrafts);
   }, [matches]);
 
+  const seasonMatches = useMemo(
+    () =>
+      filterBySquad(
+        selectedSeasonId ? matches.filter((m) => m.metadata?.seasonId === selectedSeasonId) : matches,
+        selectedSquad
+      ),
+    [matches, selectedSeasonId, selectedSquad]
+  );
+
   const derivedPlayerSummaries = useMemo<PlayerSummaryRow[]>(() => {
     const rows: Record<string, PlayerSummaryRow> = {};
 
-    matches.forEach((match) => {
+    seasonMatches.forEach((match) => {
       Object.entries(match.allocation.summary).forEach(([player, total]) => {
         const entry =
           rows[player] ??
@@ -532,7 +546,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     });
 
     return Object.values(rows).sort((a, b) => b.totalMinutes - a.totalMinutes);
-  }, [matches, perMatchTarget]);
+  }, [seasonMatches]);
 
   const derivedSeasonSummary = useMemo<SeasonSnapshot>(() => {
     let goalsFor = 0;
@@ -541,7 +555,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     let draws = 0;
     let losses = 0;
 
-    matches.forEach((match) => {
+    seasonMatches.forEach((match) => {
       const result = match.result;
       if (!result) return;
 
@@ -559,7 +573,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     });
 
     return {
-      matches: matches.length,
+      matches: seasonMatches.length,
       goalsFor,
       goalsAgainst,
       goalDifference: goalsFor - goalsAgainst,
@@ -567,16 +581,16 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
       draws,
       losses,
     };
-  }, [matches]);
+  }, [seasonMatches]);
 
-  const unsortedPlayerSummaries = apiPlayerSummaries ?? derivedPlayerSummaries;
+  // The server stats cover the whole team, so a squad view is computed here from
+  // that squad's matches. Overall keeps the server totals.
+  const useApiStats = matchPersistenceMode === 'api' && selectedSquad === '';
+  const unsortedPlayerSummaries = (useApiStats ? apiPlayerSummaries : null) ?? derivedPlayerSummaries;
   // In API mode, a null team summary means "no matches for this season" (a real
   // zero), not "fall back to the unfiltered local total" — that fallback is only
   // correct when there's no API/season filter to trust in the first place.
-  const seasonSummary =
-    matchPersistenceMode === 'api'
-      ? apiSeasonSummary ?? EMPTY_SEASON_SNAPSHOT
-      : derivedSeasonSummary;
+  const seasonSummary = useApiStats ? apiSeasonSummary ?? EMPTY_SEASON_SNAPSHOT : derivedSeasonSummary;
 
   // Sort player summaries based on current sort field and direction
   // Filter out players with 0 matches (test/deleted players)
@@ -711,6 +725,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     const payload: MatchUpdatePayload = {
       opponent: draft.opponent,
       date: draft.date,
+      squad: draft.squad,
       result: resultPayload,
       allocation: allocationPayload,
       players: playersPayload,
@@ -818,10 +833,6 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
   );
 
   const hasMatches = matches.length > 0 || seasonSummary.matches > 0;
-  const seasonMatches = useMemo(
-    () => (selectedSeasonId ? matches.filter((m) => m.metadata?.seasonId === selectedSeasonId) : matches),
-    [matches, selectedSeasonId]
-  );
   const modalAvailablePlayers = modalState
     ? (drafts[modalState.matchId]?.players ?? []).sort((a, b) => a.localeCompare(b))
     : [];
@@ -861,6 +872,25 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-2">
+        <label htmlFor="squad-filter" className="text-sm text-gray-600 dark:text-gray-400">
+          Squad
+        </label>
+        <select
+          id="squad-filter"
+          value={selectedSquad}
+          onChange={(e) => setSelectedSquad(isSquad(e.target.value) ? e.target.value : '')}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+        >
+          <option value="">Overall</option>
+          {SQUADS.map((squad) => (
+            <option key={squad} value={squad}>
+              {SQUAD_LABEL[squad]}
+            </option>
+          ))}
+        </select>
+      </div>
       {seasons.length > 0 && (
         <div className="flex items-center gap-2">
           <label htmlFor="season-filter" className="text-sm text-gray-600 dark:text-gray-400">
@@ -881,6 +911,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
           </select>
         </div>
       )}
+      </div>
 
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
@@ -988,7 +1019,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                           Error Loading Match Data
                         </h3>
                         <p className="mt-1 text-sm text-red-700 dark:text-red-400">
-                          vs {match.opponent} on {match.date}
+                          {matchLabel(match.opponent, match.squad)} on {match.date}
                         </p>
                         <p className="mt-2 text-sm text-red-600 dark:text-red-300">
                           This match is missing required lineup data. Check the browser console for details.
@@ -1027,7 +1058,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{draft.date}</p>
                       <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        vs {draft.opponent}
+                        {matchLabel(draft.opponent, match.squad)}
                       </p>
                       {resultPayload && (
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
@@ -1038,7 +1069,12 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                           )}
                           {showScore && (
                             <span className="font-semibold text-gray-800 dark:text-gray-100">
-                              {resultPayload.goalsFor ?? '—'} - {resultPayload.goalsAgainst ?? '—'}
+                              {formatScore(
+                                resultPayload.goalsFor,
+                                resultPayload.goalsAgainst,
+                                resultPayload.venue,
+                                match.squad
+                              )}
                             </span>
                           )}
                           {resultPayload.result && (
@@ -1126,6 +1162,27 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                               }
                               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
+                          </label>
+
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Match squad
+                            <select
+                              value={draft.squad ?? ''}
+                              onChange={(e) =>
+                                handleDraftFieldChange(match.id, (current) => ({
+                                  ...current,
+                                  squad: isSquad(e.target.value) ? e.target.value : null,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            >
+                              <option value="">Not set (before the split)</option>
+                              {SQUADS.map((squad) => (
+                                <option key={squad} value={squad}>
+                                  {SQUAD_LABEL[squad]}
+                                </option>
+                              ))}
+                            </select>
                           </label>
 
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">

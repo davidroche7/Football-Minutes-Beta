@@ -191,4 +191,85 @@ describe('SeasonStatsView', () => {
     await waitFor(() => expect(persistenceMocks.listMatches).toHaveBeenCalledTimes(1));
     expect(onMatchesChange).toHaveBeenCalledWith([updatedMatch]);
   });
+
+  describe('squads', () => {
+    const awayWin = { venue: 'Away', result: 'Win', goalsFor: 3, goalsAgainst: 1, honorableMentions: [], scorers: [] };
+    const redsMatch = buildMatch({ id: 'm-reds', opponent: 'Linton', squad: 'REDS', result: awayWin });
+    const blacksMatch = buildMatch({
+      id: 'm-blacks',
+      opponent: 'Haverhill',
+      squad: 'BLACKS',
+      result: { venue: 'Home', result: 'Loss', goalsFor: 0, goalsAgainst: 2, honorableMentions: [], scorers: [] },
+    });
+    const oldMatch = buildMatch({ id: 'm-old', opponent: 'Saffron Old', squad: null, result: awayWin });
+
+    it('labels squad matches and shows home goals first, leaving pre-split matches unchanged', async () => {
+      render(
+        <SeasonStatsView matches={[redsMatch, oldMatch]} onMatchesChange={() => {}} currentUser="coach" />
+      );
+
+      const redsCard = (await screen.findByText('Reds vs Linton')).closest('div.rounded-lg')!;
+      expect(within(redsCard as HTMLElement).getByText('1 - 3')).toBeInTheDocument();
+
+      const oldCard = screen.getByText('vs Saffron Old').closest('div.rounded-lg')!;
+      expect(within(oldCard as HTMLElement).getByText('3 - 1')).toBeInTheDocument();
+    });
+
+    it('filters games and totals by squad, with Overall showing everything', async () => {
+      render(
+        <SeasonStatsView
+          matches={[redsMatch, blacksMatch, oldMatch]}
+          onMatchesChange={() => {}}
+          currentUser="coach"
+        />
+      );
+
+      const squadFilter = await screen.findByLabelText('Squad');
+      expect(squadFilter).toHaveValue('');
+      expect(screen.getByText('Reds vs Linton')).toBeInTheDocument();
+      expect(screen.getByText('Blacks vs Haverhill')).toBeInTheDocument();
+      expect(screen.getByText('vs Saffron Old')).toBeInTheDocument();
+
+      await userEvent.selectOptions(squadFilter, 'BLACKS');
+
+      expect(screen.queryByText('Reds vs Linton')).not.toBeInTheDocument();
+      expect(screen.queryByText('vs Saffron Old')).not.toBeInTheDocument();
+      expect(screen.getByText('Blacks vs Haverhill')).toBeInTheDocument();
+
+      const snapshot = screen.getByText('Season Snapshot').closest('section')!;
+      const goalsAgainst = within(snapshot).getByText('Goals Against').parentElement!;
+      expect(within(goalsAgainst).getByText('2')).toBeInTheDocument();
+    });
+
+    it('uses local totals rather than whole-team API totals when a squad is chosen', async () => {
+      persistenceMocks.getMatchPersistenceMode.mockReturnValue('api');
+      statsMocks.fetchTeamStats.mockResolvedValue({
+        played: 3, wins: 2, draws: 0, losses: 1, goalsFor: 6, goalsAgainst: 4, goalDifference: 2,
+        teamId: 'team-123', seasonId: null, lastUpdated: null,
+      });
+      render(
+        <SeasonStatsView matches={[redsMatch, blacksMatch, oldMatch]} onMatchesChange={() => {}} currentUser="coach" />
+      );
+
+      const snapshot = (await screen.findByText('Season Snapshot')).closest('section')!;
+      const goalsFor = () => within(snapshot).getByText('Goals For').parentElement!;
+      await waitFor(() => expect(within(goalsFor()).getByText('6')).toBeInTheDocument());
+
+      await userEvent.selectOptions(screen.getByLabelText('Squad'), 'REDS');
+      await waitFor(() => expect(within(goalsFor()).getByText('3')).toBeInTheDocument());
+    });
+
+    it('can change the squad on an existing match', async () => {
+      persistenceMocks.updateMatch.mockResolvedValue({ ...oldMatch, squad: 'REDS' });
+      render(<SeasonStatsView matches={[oldMatch]} onMatchesChange={() => {}} currentUser="coach" />);
+
+      await userEvent.click(await screen.findByRole('button', { name: /expand/i }));
+      await userEvent.selectOptions(await screen.findByLabelText('Match squad'), 'REDS');
+      await userEvent.click(await screen.findByRole('button', { name: /save changes/i }));
+
+      await waitFor(() =>
+        expect(persistenceMocks.updateMatch).toHaveBeenCalledWith('m-old', expect.objectContaining({ squad: 'REDS' }))
+      );
+    });
+  });
 });
