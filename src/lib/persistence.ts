@@ -67,6 +67,7 @@ interface ApiFixtureSummary {
   opponent: string;
   fixtureDate: string;
   venueType: 'HOME' | 'AWAY' | 'NEUTRAL';
+  squadGroup?: 'REDS' | 'BLACKS' | null;
   status: 'DRAFT' | 'LOCKED' | 'FINAL';
   lockedAt: string | null;
   finalisedAt: string | null;
@@ -223,6 +224,18 @@ async function updateMatchLocal(
       editedBy: updates.editor,
     });
     match.time = updates.time;
+  }
+
+  if ('squad' in updates && (updates.squad ?? null) !== (match.squad ?? null)) {
+    editEvents.push({
+      id: createId(),
+      field: 'squad',
+      previousValue: match.squad ?? '',
+      newValue: updates.squad ?? '',
+      editedAt: now,
+      editedBy: updates.editor,
+    });
+    match.squad = updates.squad ?? null;
   }
 
   if ('result' in updates) {
@@ -623,6 +636,7 @@ const convertFixtureDetailToMatch = (detail: ApiFixtureDetail): MatchRecord => {
     players,
     allocation,
     result: matchResult,
+    squad: detail.fixture.squadGroup ?? null,
     createdAt: detail.fixture.createdAt,
     lastModifiedAt: detail.fixture.updatedAt,
     // editHistory is lazy-loaded via fetchFixtureAuditEvents when needed
@@ -717,6 +731,7 @@ const saveMatchApi = async (payload: SaveMatchPayload): Promise<MatchRecord> => 
       fixtureDate: payload.date,
       kickoffTime: payload.time || null,
       venueType: mapVenueToApi(payload.result?.venue),
+      squadGroup: payload.squad ?? null,
       squad,
       notes: null,
     },
@@ -817,6 +832,9 @@ const updateMatchApi = async (
   }
   if (updates.result?.venue) {
     metadataUpdates.venueType = mapVenueToApi(updates.result.venue);
+  }
+  if ('squad' in updates && (updates.squad ?? null) !== (existingMatch.squad ?? null)) {
+    metadataUpdates.squadGroup = updates.squad ?? null;
   }
 
   if (Object.keys(metadataUpdates).length > 0) {

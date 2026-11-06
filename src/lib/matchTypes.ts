@@ -1,4 +1,5 @@
 import type { Allocation } from './types';
+import type { Squad } from './squads';
 
 export interface MatchResult {
   venue?: string;
@@ -18,12 +19,15 @@ export interface SaveMatchPayload {
   allocation: Allocation;
   result?: MatchResult | null;
   createdBy?: string;
+  /** Reds or Blacks; null/absent for matches played before the squad split. */
+  squad?: Squad | null;
 }
 
 export type MatchEditField =
   | 'opponent'
   | 'date'
   | 'time'
+  | 'squad'
   | 'result.venue'
   | 'result.result'
   | 'result.goalsFor'
@@ -62,5 +66,6 @@ export interface MatchUpdatePayload {
   result?: MatchResult | null;
   allocation?: Allocation;
   players?: string[];
+  squad?: Squad | null;
   editor: string;
 }

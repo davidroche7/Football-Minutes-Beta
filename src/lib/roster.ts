@@ -1,5 +1,6 @@
 import { USE_API_PERSISTENCE, TEAM_ID } from '../config/environment';
 import { apiRequest } from './apiClient';
+import type { PlayerSquad } from './squads';
 
 const STORAGE_KEY = 'ffm:roster';
 
@@ -13,6 +14,8 @@ export interface RosterPlayer {
   status?: string;
   preferredPositions?: string[];
   notes?: string | null;
+  /** Reds / Blacks / Both; null = not tagged yet (eligible for both squads). */
+  squadGroup?: PlayerSquad | null;
 }
 
 export type RosterActionType = 'added' | 'removed' | 'restored' | 'updated';
@@ -81,6 +84,7 @@ interface ApiPlayerResponse {
   squadNumber: number | null;
   status: string;
   notes: string | null;
+  squadGroup?: PlayerSquad | null;
   createdAt: string;
   updatedAt: string;
   removedAt: string | null;
@@ -96,6 +100,7 @@ const mapApiPlayerToRoster = (player: ApiPlayerResponse): RosterPlayer => ({
   status: player.status,
   preferredPositions: player.preferredPositions,
   notes: player.notes,
+  squadGroup: player.squadGroup ?? null,
 });
 
 const hasLocalStorage = () =>
@@ -252,7 +257,7 @@ async function getRosterAuditLocal(): Promise<RosterAuditEntry[]> {
     .map((entry) => ({ ...entry }));
 }
 
-async function addPlayerLocal(name: string, actor: string): Promise<RosterPlayer> {
+async function addPlayerLocal(name: string, actor: string, squadGroup: PlayerSquad | null = null): Promise<RosterPlayer> {
   const trimmedName = name.trim();
   if (!trimmedName) {
     throw new Error('Player name cannot be empty');
@@ -273,6 +278,7 @@ async function addPlayerLocal(name: string, actor: string): Promise<RosterPlayer
     createdAt: now,
     updatedAt: now,
     removedAt: null,
+    squadGroup,
   };
 
   const audit: RosterAuditEntry = {
@@ -386,7 +392,12 @@ async function getRosterAuditApi(teamIdOverride?: string): Promise<RosterAuditEn
   }
 }
 
-async function addPlayerApi(name: string, actor: string, teamIdOverride?: string): Promise<RosterPlayer> {
+async function addPlayerApi(
+  name: string,
+  actor: string,
+  squadGroup: PlayerSquad | null,
+  teamIdOverride?: string
+): Promise<RosterPlayer> {
   const teamId = resolveTeamId(teamIdOverride);
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -399,6 +410,7 @@ async function addPlayerApi(name: string, actor: string, teamIdOverride?: string
     },
     body: {
       displayName: trimmedName,
+      squadGroup,
     },
     actorId: actor,
   });
@@ -463,19 +475,52 @@ export async function getRosterAudit(): Promise<RosterAuditEntry[]> {
   return getRosterAuditLocal();
 }
 
-export async function addPlayer(name: string, actor: string): Promise<RosterPlayer> {
+export async function addPlayer(
+  name: string,
+  actor: string,
+  squadGroup: PlayerSquad | null = null
+): Promise<RosterPlayer> {
   if (canUseApi()) {
     try {
-      const player = await addPlayerApi(name, actor);
+      const player = await addPlayerApi(name, actor, squadGroup);
       setPersistenceState('api');
       return player;
     } catch (error) {
       logApiFallback(error);
-      return addPlayerLocal(name, actor);
+      return addPlayerLocal(name, actor, squadGroup);
     }
   }
   ensureLocalPersistenceState();
-  return addPlayerLocal(name, actor);
+  return addPlayerLocal(name, actor, squadGroup);
+}
+
+/**
+ * Tag a player Reds / Blacks / Both (null = untagged). Unlike add/remove this does
+ * not fall back to local storage on API failure: a tag saved only in this browser
+ * would silently disagree with what the other coach sees.
+ */
+export async function updatePlayerSquad(
+  playerId: string,
+  squadGroup: PlayerSquad | null,
+  actor: string
+): Promise<RosterPlayer | null> {
+  if (canUseApi()) {
+    const response = await apiRequest<{ data: ApiPlayerResponse }>(`/players/${playerId}`, {
+      method: 'PATCH',
+      body: { squadGroup },
+      actorId: actor,
+    });
+    setPersistenceState('api');
+    return response?.data ? mapApiPlayerToRoster(response.data) : null;
+  }
+  ensureLocalPersistenceState();
+  const storage = readStorage();
+  const player = storage.players.find((item) => item.id === playerId);
+  if (!player) return null;
+  player.squadGroup = squadGroup;
+  player.updatedAt = new Date().toISOString();
+  writeStorage(storage);
+  return { ...player };
 }
 
 export async function removePlayer(playerId: string, actor: string): Promise<RosterPlayer | null> {

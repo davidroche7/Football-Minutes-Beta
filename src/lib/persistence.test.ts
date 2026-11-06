@@ -49,6 +49,23 @@ describe('persistence', () => {
     expect(stored[0]?.opponent).toBe('Rivals FC');
   });
 
+  it('keeps the squad on save and records a squad change', async () => {
+    const saved = await saveMatch({
+      date: '2026-11-14',
+      opponent: 'Linton',
+      players: ['P1'],
+      allocation: sampleAllocation,
+      squad: 'REDS',
+    });
+    expect(saved.squad).toBe('REDS');
+
+    const updated = await updateMatch(saved.id, { squad: 'BLACKS', editor: 'coach' });
+    expect(updated?.squad).toBe('BLACKS');
+    expect(updated?.editHistory?.map((e) => [e.field, e.previousValue, e.newValue])).toEqual([
+      ['squad', 'REDS', 'BLACKS'],
+    ]);
+  });
+
   it('updates match metadata and records audit history', async () => {
     const saved = await saveMatch({
       date: '2024-01-01',
