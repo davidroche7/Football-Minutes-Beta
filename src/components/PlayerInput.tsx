@@ -8,23 +8,67 @@ import {
   listRoster,
   removePlayer,
   restorePlayer,
+  updatePlayerSquad,
   type RosterAuditEntry,
   type RosterPersistenceMode,
   type RosterPlayer,
 } from '../lib/roster';
 import { TEAM_ID, USE_API_PERSISTENCE } from '../config/environment';
+import { isEligible, isPlayerSquad, SQUAD_LABEL, type PlayerSquad, type Squad } from '../lib/squads';
 
 interface PlayerInputProps {
   onPlayersChange: (players: string[]) => void;
   currentUser: string;
   showMatchSelection?: boolean;
+  /** When picking for a squad, only that squad's players (plus Both/untagged) are offered. */
+  squad?: Squad;
+  /** Player name → label of the other squad's match they're already picked for that day. */
+  clashes?: Record<string, string>;
+}
+
+function SquadSelect({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: PlayerSquad | null | undefined;
+  onChange: (value: PlayerSquad | null) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      id={id}
+      aria-label={label}
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={(e) => onChange(isPlayerSquad(e.target.value) ? e.target.value : null)}
+      className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+    >
+      <option value="">Not set</option>
+      <option value="REDS">{SQUAD_LABEL.REDS}</option>
+      <option value="BLACKS">{SQUAD_LABEL.BLACKS}</option>
+      <option value="BOTH">{SQUAD_LABEL.BOTH}</option>
+    </select>
+  );
 }
 
 /**
  * Component for inputting and managing the list of players
  */
-export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection = true }: PlayerInputProps) {
+export function PlayerInput({
+  onPlayersChange,
+  currentUser,
+  showMatchSelection = true,
+  squad,
+  clashes,
+}: PlayerInputProps) {
   const [playerName, setPlayerName] = useState('');
+  const [newPlayerSquad, setNewPlayerSquad] = useState<PlayerSquad | null>(null);
+  const [squadSavingId, setSquadSavingId] = useState<string | null>(null);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +140,22 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
     };
   }, [refreshPersistenceState]);
 
+  // Choosing (or switching) squad drops any picked players who aren't in it.
+  useEffect(() => {
+    if (!squad || !showMatchSelection) return;
+    const dropped = roster.filter(
+      (player) => selectedPlayerIds.includes(player.id) && !isEligible(player.squadGroup, squad)
+    );
+    if (dropped.length === 0) return;
+    const droppedIds = new Set(dropped.map((player) => player.id));
+    setSelectedPlayerIds((prev) => prev.filter((id) => !droppedIds.has(id)));
+    setMessage(
+      `${dropped.map((player) => player.name).join(', ')} ${dropped.length === 1 ? 'is' : 'are'} not in the ${
+        SQUAD_LABEL[squad]
+      } squad and ${dropped.length === 1 ? 'was' : 'were'} removed from this match.`
+    );
+  }, [squad, roster, selectedPlayerIds, showMatchSelection]);
+
   useEffect(() => {
     if (!showMatchSelection) {
       onPlayersChange([]);
@@ -133,7 +193,9 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
     setError(null);
     setMessage(null);
     try {
-      const created = await addPlayer(trimmed, currentUser);
+      // While picking for a squad, a new player joins that squad.
+      const squadForNew = showMatchSelection && squad ? squad : newPlayerSquad;
+      const created = await addPlayer(trimmed, currentUser, squadForNew);
       const players = await listRoster({ includeRemoved: true });
       setRoster(players);
       setSelectedPlayerIds((prev) => [...prev, created.id]);
@@ -198,6 +260,30 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
     }
   };
 
+  const handleSquadChange = async (playerId: string, squadGroup: PlayerSquad | null) => {
+    if (squadSavingId) return;
+
+    setSquadSavingId(playerId);
+    setError(null);
+    setMessage(null);
+    try {
+      const updated = await updatePlayerSquad(playerId, squadGroup, currentUser);
+      if (updated) {
+        setRoster((prev) =>
+          prev.map((player) => (player.id === playerId ? { ...player, squadGroup: updated.squadGroup ?? null } : player))
+        );
+        setMessage(
+          `${updated.name} is now ${squadGroup ? SQUAD_LABEL[squadGroup] : 'not set (available to both squads)'}`
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update squad');
+    } finally {
+      setSquadSavingId(null);
+      refreshPersistenceState();
+    }
+  };
+
   const toggleSelection = (playerId: string) => {
     setSelectedPlayerIds((prev) =>
       prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]
@@ -212,8 +298,12 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
   };
 
   const activeRoster = useMemo(
-    () => roster.filter((player) => player.removedAt === null),
-    [roster]
+    () =>
+      roster.filter(
+        (player) =>
+          player.removedAt === null && (!showMatchSelection || !squad || isEligible(player.squadGroup, squad))
+      ),
+    [roster, showMatchSelection, squad]
   );
 
   const removedPlayers = useMemo(
@@ -300,6 +390,14 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
       )}
 
       <div className="flex gap-2 mb-4">
+        {!showMatchSelection && (
+          <SquadSelect
+            id="new-player-squad"
+            label="Squad for new player"
+            value={newPlayerSquad}
+            onChange={setNewPlayerSquad}
+          />
+        )}
         <input
           type="text"
           value={playerName}
@@ -321,7 +419,7 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
       <div className="flex flex-col gap-6 md:flex-row">
         <div className="flex-1">
           <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-            Squad Roster
+            {showMatchSelection && squad ? `${SQUAD_LABEL[squad]} Roster` : 'Squad Roster'}
           </h3>
           {isLoading ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">Loading roster…</p>
@@ -340,17 +438,33 @@ export function PlayerInput({ onPlayersChange, currentUser, showMatchSelection =
                     className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
                   >
                     {showMatchSelection ? (
-                      <label className="flex items-center gap-3 text-gray-900 dark:text-white">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4"
-                          checked={selected}
-                          onChange={() => toggleSelection(player.id)}
-                        />
-                        <span>{player.name}</span>
-                      </label>
+                      <div className="flex flex-col">
+                        <label className="flex items-center gap-3 text-gray-900 dark:text-white">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={selected}
+                            onChange={() => toggleSelection(player.id)}
+                          />
+                          <span>{player.name}</span>
+                        </label>
+                        {clashes?.[player.name] && (
+                          <span className="ml-7 text-xs font-medium text-amber-700 dark:text-amber-300">
+                            Already picked for {clashes[player.name]}
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-gray-900 dark:text-white">{player.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-900 dark:text-white">{player.name}</span>
+                        <SquadSelect
+                          id={`squad-${player.id}`}
+                          label={`Squad for ${player.name}`}
+                          value={player.squadGroup}
+                          disabled={squadSavingId === player.id}
+                          onChange={(value) => handleSquadChange(player.id, value)}
+                        />
+                      </div>
                     )}
                     <button
                       onClick={() => handleRemovePlayer(player.id)}
