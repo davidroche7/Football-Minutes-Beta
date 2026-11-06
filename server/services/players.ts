@@ -1,7 +1,7 @@
 /* eslint-env node */
 import type { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/client';
-import type { PlayerRow, PlayerStatus } from '../db/types';
+import { parseSquadGroup, type PlayerRow, type PlayerStatus, type SquadGroup } from '../db/types';
 
 export interface PlayerDTO {
   id: string;
@@ -11,6 +11,7 @@ export interface PlayerDTO {
   squadNumber: number | null;
   status: PlayerStatus;
   notes: string | null;
+  squadGroup: SquadGroup | null;
   createdAt: string;
   updatedAt: string;
   removedAt: string | null;
@@ -23,6 +24,7 @@ export interface CreatePlayerInput {
   squadNumber?: number | null;
   status?: PlayerStatus;
   notes?: string | null;
+  squadGroup?: SquadGroup | null;
   actorId?: string | null;
 }
 
@@ -32,6 +34,7 @@ export interface UpdatePlayerInput {
   squadNumber?: number | null;
   status?: PlayerStatus;
   notes?: string | null;
+  squadGroup?: SquadGroup | null;
   actorId?: string | null;
 }
 
@@ -43,6 +46,7 @@ const mapPlayer = (row: PlayerRow): PlayerDTO => ({
   squadNumber: row.squad_number,
   status: row.status,
   notes: row.notes,
+  squadGroup: row.squad_group ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   removedAt: row.removed_at,
@@ -82,10 +86,11 @@ export async function getPlayer(playerId: string): Promise<PlayerDTO | null> {
 
 export async function createPlayer(input: CreatePlayerInput): Promise<PlayerDTO> {
   const now = new Date().toISOString();
+  const squadGroup = parseSquadGroup(input.squadGroup ?? null, true);
   return withTransaction(async (client) => {
     const insert = await client.query<PlayerRow>(
-      `INSERT INTO player (team_id, display_name, preferred_positions, squad_number, status, notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+      `INSERT INTO player (team_id, display_name, preferred_positions, squad_number, status, notes, created_at, updated_at, squad_group)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8)
        RETURNING *`,
       [
         input.teamId,
@@ -95,6 +100,7 @@ export async function createPlayer(input: CreatePlayerInput): Promise<PlayerDTO>
         input.status ?? 'ACTIVE',
         input.notes ?? null,
         now,
+        squadGroup,
       ]
     );
 
@@ -129,6 +135,10 @@ export async function updatePlayer(playerId: string, updates: UpdatePlayerInput)
   if (Object.prototype.hasOwnProperty.call(updates, 'notes')) {
     fields.push(`notes = $${index++}`);
     values.push(updates.notes ?? null);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'squadGroup')) {
+    fields.push(`squad_group = $${index++}`);
+    values.push(parseSquadGroup(updates.squadGroup ?? null, true));
   }
 
   if (fields.length === 0) {

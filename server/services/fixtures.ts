@@ -13,7 +13,9 @@ import type {
   MatchResultRow,
   PlayerMatchStatRow,
   ResultCode,
+  SquadGroup,
 } from '../db/types';
+import { parseSquadGroup } from '../db/types';
 
 interface AuditPayload {
   actorId: string | null;
@@ -53,6 +55,7 @@ export interface FixtureSummaryDTO {
   opponent: string;
   fixtureDate: string;
   venueType: string;
+  squadGroup: SquadGroup | null;
   status: FixtureStatus;
   lockedAt: string | null;
   finalisedAt: string | null;
@@ -107,6 +110,8 @@ export interface CreateFixtureInput {
   fixtureDate: string;
   venueType: string;
   kickoffTime?: string | null;
+  /** Reds or Blacks. Omitted/null only for legacy callers. */
+  squadGroup?: SquadGroup | null;
   squad: Array<{ playerId: string; role: FixtureRole }>;
   notes?: string | null;
   createdBy: string | null;
@@ -119,6 +124,7 @@ export interface UpdateFixtureInput {
   kickoffTime?: string | null;
   notes?: string | null;
   seasonId?: string | null;
+  squadGroup?: SquadGroup | null;
 }
 
 export interface ReplaceLineupInput {
@@ -148,6 +154,7 @@ const mapFixtureSummary = (row: FixtureRow, resultRow?: MatchResultRow | null): 
   opponent: row.opponent,
   fixtureDate: row.fixture_date,
   venueType: row.venue_type,
+  squadGroup: row.squad_group ?? null,
   status: row.status,
   lockedAt: row.locked_at,
   finalisedAt: row.finalised_at,
@@ -177,7 +184,7 @@ export async function listFixtures(options: ListFixturesOptions): Promise<Fixtur
   const sql = `
     SELECT
       f.id, f.team_id, f.season_id, f.opponent, f.fixture_date,
-      f.venue_type, f.status, f.locked_at, f.finalised_at,
+      f.venue_type, f.squad_group, f.status, f.locked_at, f.finalised_at,
       f.created_at, f.updated_at,
       mr.result_code, mr.team_goals, mr.opponent_goals
     FROM fixture f
@@ -350,10 +357,11 @@ const ensurePlayerStat = (
 };
 
 export async function createFixture(input: CreateFixtureInput): Promise<FixtureSummaryDTO> {
+  const squadGroup = parseSquadGroup(input.squadGroup ?? null, false);
   return withTransaction(async (client) => {
     const insertFixture = await client.query<FixtureRow>(
-      `INSERT INTO fixture (team_id, season_id, opponent, fixture_date, venue_type, kickoff_time, notes, created_by)
-       VALUES ($1, COALESCE($2::uuid, (SELECT season_id FROM team WHERE id = $1)), $3, $4, $5, $6, $7, $8)
+      `INSERT INTO fixture (team_id, season_id, opponent, fixture_date, venue_type, kickoff_time, notes, created_by, squad_group)
+       VALUES ($1, COALESCE($2::uuid, (SELECT season_id FROM team WHERE id = $1)), $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         input.teamId,
@@ -364,6 +372,7 @@ export async function createFixture(input: CreateFixtureInput): Promise<FixtureS
         input.kickoffTime ?? null,
         input.notes ?? null,
         input.createdBy,
+        squadGroup,
       ]
     );
 
@@ -428,6 +437,10 @@ export async function updateFixtureMetadata(
   if (Object.prototype.hasOwnProperty.call(updates, 'seasonId')) {
     fields.push(`season_id = $${params.length + 1}`);
     params.push(updates.seasonId ?? null);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'squadGroup')) {
+    fields.push(`squad_group = $${params.length + 1}`);
+    params.push(parseSquadGroup(updates.squadGroup ?? null, false));
   }
 
   if (fields.length === 0) {
