@@ -259,6 +259,33 @@ describe('SeasonStatsView', () => {
       await waitFor(() => expect(within(goalsFor()).getByText('3')).toBeInTheDocument());
     });
 
+    it('only counts played (FINAL) matches in squad totals, but still lists upcoming ones', async () => {
+      const played = { ...redsMatch, metadata: { status: 'FINAL' } };
+      const upcoming = buildMatch({ id: 'm-next', opponent: 'Stansted', squad: 'REDS', metadata: { status: 'LOCKED' } });
+      render(<SeasonStatsView matches={[played, upcoming]} onMatchesChange={() => {}} currentUser="coach" />);
+
+      await userEvent.selectOptions(await screen.findByLabelText('Squad'), 'REDS');
+
+      expect(screen.getByText('Reds vs Stansted')).toBeInTheDocument();
+      const snapshot = screen.getByText('Season Snapshot').closest('section')!;
+      const played1 = within(snapshot).getByText('Matches Played').parentElement!;
+      expect(within(played1).getByText('1')).toBeInTheDocument();
+    });
+
+    it('says when a squad has no games yet rather than the season', async () => {
+      render(<SeasonStatsView matches={[redsMatch]} onMatchesChange={() => {}} currentUser="coach" />);
+      await userEvent.selectOptions(await screen.findByLabelText('Squad'), 'BLACKS');
+      expect(screen.getByText('No Blacks games recorded yet.')).toBeInTheDocument();
+    });
+
+    it('previews the edited squad on the card before saving', async () => {
+      render(<SeasonStatsView matches={[oldMatch]} onMatchesChange={() => {}} currentUser="coach" />);
+      await userEvent.click(await screen.findByRole('button', { name: /expand/i }));
+      await userEvent.selectOptions(await screen.findByLabelText('Match squad'), 'REDS');
+      expect(screen.getByText('Reds vs Saffron Old')).toBeInTheDocument();
+      expect(screen.getByText('1 - 3')).toBeInTheDocument();
+    });
+
     it('can change the squad on an existing match', async () => {
       persistenceMocks.updateMatch.mockResolvedValue({ ...oldMatch, squad: 'REDS' });
       render(<SeasonStatsView matches={[oldMatch]} onMatchesChange={() => {}} currentUser="coach" />);

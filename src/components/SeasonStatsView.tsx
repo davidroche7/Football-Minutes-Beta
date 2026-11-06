@@ -447,10 +447,21 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     [matches, selectedSeasonId, selectedSquad]
   );
 
+  // Matches the derived totals count. Overall keeps its long-standing behaviour (every
+  // loaded match). A squad view matches the server's definition of a played match
+  // (FINAL) so upcoming picks don't inflate it; local matches carry no status.
+  const statsMatches = useMemo(
+    () =>
+      selectedSquad
+        ? seasonMatches.filter((m) => !m.metadata?.status || m.metadata.status === 'FINAL')
+        : matches,
+    [matches, seasonMatches, selectedSquad]
+  );
+
   const derivedPlayerSummaries = useMemo<PlayerSummaryRow[]>(() => {
     const rows: Record<string, PlayerSummaryRow> = {};
 
-    seasonMatches.forEach((match) => {
+    statsMatches.forEach((match) => {
       Object.entries(match.allocation.summary).forEach(([player, total]) => {
         const entry =
           rows[player] ??
@@ -546,7 +557,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     });
 
     return Object.values(rows).sort((a, b) => b.totalMinutes - a.totalMinutes);
-  }, [seasonMatches]);
+  }, [statsMatches]);
 
   const derivedSeasonSummary = useMemo<SeasonSnapshot>(() => {
     let goalsFor = 0;
@@ -555,7 +566,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     let draws = 0;
     let losses = 0;
 
-    seasonMatches.forEach((match) => {
+    statsMatches.forEach((match) => {
       const result = match.result;
       if (!result) return;
 
@@ -573,7 +584,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
     });
 
     return {
-      matches: seasonMatches.length,
+      matches: statsMatches.length,
       goalsFor,
       goalsAgainst,
       goalDifference: goalsFor - goalsAgainst,
@@ -581,7 +592,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
       draws,
       losses,
     };
-  }, [seasonMatches]);
+  }, [statsMatches]);
 
   // The server stats cover the whole team, so a squad view is computed here from
   // that squad's matches. Overall keeps the server totals.
@@ -995,7 +1006,9 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
 
       {seasonStatsTab === 'games' && hasMatches && seasonMatches.length === 0 && (
         <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          No games recorded for this season yet.
+          {selectedSquad
+            ? `No ${SQUAD_LABEL[selectedSquad]} games recorded yet.`
+            : 'No games recorded for this season yet.'}
         </div>
       )}
 
@@ -1058,7 +1071,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{draft.date}</p>
                       <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {matchLabel(draft.opponent, match.squad)}
+                        {matchLabel(draft.opponent, draft.squad)}
                       </p>
                       {resultPayload && (
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
@@ -1073,7 +1086,7 @@ export function SeasonStatsView({ matches, onMatchesChange, currentUser }: Seaso
                                 resultPayload.goalsFor,
                                 resultPayload.goalsAgainst,
                                 resultPayload.venue,
-                                match.squad
+                                draft.squad
                               )}
                             </span>
                           )}

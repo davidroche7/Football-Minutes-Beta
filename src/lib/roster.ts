@@ -517,8 +517,17 @@ export async function updatePlayerSquad(
   const storage = readStorage();
   const player = storage.players.find((item) => item.id === playerId);
   if (!player) return null;
+  const now = new Date().toISOString();
   player.squadGroup = squadGroup;
-  player.updatedAt = new Date().toISOString();
+  player.updatedAt = now;
+  storage.audit.push({
+    id: createId(),
+    playerId: player.id,
+    action: 'updated',
+    actor,
+    timestamp: now,
+    playerName: player.name,
+  });
   writeStorage(storage);
   return { ...player };
 }

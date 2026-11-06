@@ -164,8 +164,16 @@ function App() {
   // Players already picked for the other squad's match on the same day (warn only).
   const squadClashes = useMemo(
     () =>
-      matchDetails.squad ? findSquadClashes(matches, matchDetails.date, matchDetails.squad, players) : {},
-    [matches, matchDetails.date, matchDetails.squad, players]
+      // Check every player in the other squad's matches, so the warning shows before ticking.
+      matchDetails.squad
+        ? findSquadClashes(
+            matches,
+            matchDetails.date,
+            matchDetails.squad,
+            matches.flatMap((m) => m.players)
+          )
+        : {},
+    [matches, matchDetails.date, matchDetails.squad]
   );
 
   const refreshMatchPersistenceState = useCallback(() => {
@@ -835,6 +843,8 @@ function App() {
                 return;
               }
               setMatchSetupComplete(true);
+              // Pick up the other coach's latest saved team for the same-day warning.
+              void syncMatchesFromSource();
             }} className="space-y-4">
               <div className="min-w-0">
                 <label htmlFor="setup-squad" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
