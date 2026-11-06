@@ -11,6 +11,7 @@ const rosterMocks = vi.hoisted(() => ({
   listRoster: vi.fn(),
   removePlayer: vi.fn(),
   restorePlayer: vi.fn(),
+  updatePlayerSquad: vi.fn(),
 }));
 
 vi.mock('../lib/roster', () => rosterMocks);
@@ -88,7 +89,7 @@ describe('PlayerInput', () => {
     await userEvent.click(screen.getByRole('button', { name: /add player to squad/i }));
 
     await waitFor(() => {
-      expect(mockAddPlayer).toHaveBeenCalledWith('Casey', 'coach');
+      expect(mockAddPlayer).toHaveBeenCalledWith('Casey', 'coach', null);
       expect(mockListRoster).toHaveBeenCalledTimes(2);
     });
 
@@ -193,5 +194,100 @@ describe('PlayerInput', () => {
     expect(
       await screen.findByText(/API unavailable: TEAM_ID environment variable is required/, { exact: false })
     ).toBeInTheDocument();
+  });
+
+  describe('squads', () => {
+    const squadRoster = () => [
+      { id: '1', name: 'Ava', createdAt: '', updatedAt: '', removedAt: null, squadGroup: 'REDS' },
+      { id: '2', name: 'Bea', createdAt: '', updatedAt: '', removedAt: null, squadGroup: 'BLACKS' },
+      { id: '3', name: 'Cat', createdAt: '', updatedAt: '', removedAt: null, squadGroup: null },
+      { id: '4', name: 'Dee', createdAt: '', updatedAt: '', removedAt: null, squadGroup: 'BOTH' },
+    ];
+
+    it('only offers players eligible for the chosen squad', async () => {
+      mockListRoster.mockResolvedValue(squadRoster());
+      render(<PlayerInput currentUser="coach" onPlayersChange={() => {}} squad="REDS" />);
+
+      expect(await screen.findByLabelText('Ava')).toBeInTheDocument();
+      expect(screen.getByLabelText('Cat')).toBeInTheDocument();
+      expect(screen.getByLabelText('Dee')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Bea')).not.toBeInTheDocument();
+    });
+
+    it('drops picked players who are not in a newly chosen squad', async () => {
+      mockListRoster.mockResolvedValue(squadRoster());
+      const onPlayersChange = vi.fn();
+      const { rerender } = render(
+        <PlayerInput currentUser="coach" onPlayersChange={onPlayersChange} squad="REDS" />
+      );
+
+      await userEvent.click(await screen.findByLabelText('Ava'));
+      await userEvent.click(screen.getByLabelText('Dee'));
+      await waitFor(() => expect(onPlayersChange).toHaveBeenLastCalledWith(['Ava', 'Dee']));
+
+      rerender(<PlayerInput currentUser="coach" onPlayersChange={onPlayersChange} squad="BLACKS" />);
+
+      await waitFor(() => expect(onPlayersChange).toHaveBeenLastCalledWith(['Dee']));
+      expect(await screen.findByText(/Ava is not in the Blacks squad/)).toBeInTheDocument();
+    });
+
+    it('warns, but still allows picking, a player already picked for the other squad', async () => {
+      mockListRoster.mockResolvedValue(squadRoster());
+      const onPlayersChange = vi.fn();
+      render(
+        <PlayerInput
+          currentUser="coach"
+          onPlayersChange={onPlayersChange}
+          squad="BLACKS"
+          clashes={{ Dee: 'Reds vs Linton' }}
+        />
+      );
+
+      expect(await screen.findByText('Already picked for Reds vs Linton')).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText('Dee'));
+      await waitFor(() => expect(onPlayersChange).toHaveBeenLastCalledWith(['Dee']));
+    });
+
+    it('creates players added while picking in the current squad', async () => {
+      mockListRoster.mockResolvedValue(squadRoster());
+      mockAddPlayer.mockResolvedValueOnce({ id: '5', name: 'Eve', createdAt: '', updatedAt: '', removedAt: null });
+      render(<PlayerInput currentUser="coach" onPlayersChange={() => {}} squad="BLACKS" />);
+
+      await screen.findByLabelText('Bea');
+      await userEvent.type(screen.getByPlaceholderText('Add player to squad'), 'Eve');
+      await userEvent.click(screen.getByRole('button', { name: /add player to squad/i }));
+
+      await waitFor(() => expect(mockAddPlayer).toHaveBeenCalledWith('Eve', 'coach', 'BLACKS'));
+    });
+
+    it('lets the roster manager tag players and new players', async () => {
+      mockListRoster.mockResolvedValue(squadRoster());
+      rosterMocks.updatePlayerSquad.mockResolvedValueOnce({ ...squadRoster()[2], squadGroup: 'BLACKS' });
+      mockAddPlayer.mockResolvedValueOnce({ id: '5', name: 'Eve', createdAt: '', updatedAt: '', removedAt: null });
+      render(<PlayerInput currentUser="coach" onPlayersChange={() => {}} showMatchSelection={false} />);
+
+      const catSquad = await screen.findByLabelText('Squad for Cat');
+      expect(catSquad).toHaveValue('');
+      expect(screen.getByLabelText('Squad for Bea')).toHaveValue('BLACKS');
+
+      await userEvent.selectOptions(catSquad, 'BLACKS');
+      await waitFor(() => expect(rosterMocks.updatePlayerSquad).toHaveBeenCalledWith('3', 'BLACKS', 'coach'));
+      await waitFor(() => expect(screen.getByLabelText('Squad for Cat')).toHaveValue('BLACKS'));
+
+      await userEvent.selectOptions(screen.getByLabelText('Squad for new player'), 'BOTH');
+      await userEvent.type(screen.getByPlaceholderText('Add player to squad'), 'Eve');
+      await userEvent.click(screen.getByRole('button', { name: /add player to squad/i }));
+      await waitFor(() => expect(mockAddPlayer).toHaveBeenCalledWith('Eve', 'coach', 'BOTH'));
+    });
+
+    it('shows an error and keeps the old tag if saving a tag fails', async () => {
+      mockListRoster.mockResolvedValue(squadRoster());
+      rosterMocks.updatePlayerSquad.mockRejectedValueOnce(new Error('Network down'));
+      render(<PlayerInput currentUser="coach" onPlayersChange={() => {}} showMatchSelection={false} />);
+
+      await userEvent.selectOptions(await screen.findByLabelText('Squad for Ava'), 'BLACKS');
+      expect(await screen.findByText('Network down')).toBeInTheDocument();
+      expect(screen.getByLabelText('Squad for Ava')).toHaveValue('REDS');
+    });
   });
 });

@@ -13,6 +13,7 @@ import { SeasonStatsView } from './components/SeasonStatsView';
 import { RulesEngineView } from './components/RulesEngineView';
 import { LoginForm } from './components/LoginForm';
 import { AuditLogView } from './components/AuditLogView';
+import { findSquadClashes, isSquad, matchLabel, SQUAD_LABEL, SQUADS, type Squad } from './lib/squads';
 import { allocate, updateSlot, updateSlotProperties, swapPositions, swapWithSub } from './lib/allocator';
 import {
   listMatches,
@@ -151,12 +152,21 @@ function App() {
     time: string;
     venue: 'Home' | 'Away' | 'Neutral';
     opponent: string;
+    squad: Squad | '';
   }>({
     date: new Date().toISOString().split('T')[0] || '',
     time: '',
     venue: 'Home',
     opponent: '',
+    squad: '',
   });
+
+  // Players already picked for the other squad's match on the same day (warn only).
+  const squadClashes = useMemo(
+    () =>
+      matchDetails.squad ? findSquadClashes(matches, matchDetails.date, matchDetails.squad, players) : {},
+    [matches, matchDetails.date, matchDetails.squad, players]
+  );
 
   const refreshMatchPersistenceState = useCallback(() => {
     const mode = getMatchPersistenceMode();
@@ -663,8 +673,9 @@ function App() {
             }
           : null,
         createdBy: session.username,
+        squad: matchDetails.squad || null,
       });
-      setSaveStatus(`Match saved for ${date} vs ${opponent}.`);
+      setSaveStatus(`Match saved for ${date}: ${matchLabel(opponent, matchDetails.squad || null)}.`);
       setConfirmModalOpen(false);
       setMatchJustSaved(true);
       await syncMatchesFromSource();
@@ -815,12 +826,38 @@ function App() {
 
             <form onSubmit={(e) => {
               e.preventDefault();
+              if (!matchDetails.squad) {
+                alert('Please choose Reds or Blacks');
+                return;
+              }
               if (!matchDetails.opponent.trim()) {
                 alert('Please enter opponent name');
                 return;
               }
               setMatchSetupComplete(true);
             }} className="space-y-4">
+              <div className="min-w-0">
+                <label htmlFor="setup-squad" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Squad *
+                </label>
+                <select
+                  id="setup-squad"
+                  value={matchDetails.squad}
+                  onChange={(e) =>
+                    setMatchDetails({ ...matchDetails, squad: isSquad(e.target.value) ? e.target.value : '' })
+                  }
+                  required
+                  className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">Choose Reds or Blacks…</option>
+                  {SQUADS.map((squad) => (
+                    <option key={squad} value={squad}>
+                      {SQUAD_LABEL[squad]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="min-w-0">
                   <label htmlFor="setup-date" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
@@ -901,10 +938,9 @@ function App() {
               <div className="text-sm text-gray-700 dark:text-gray-300">
                 <span className="font-semibold text-gray-900 dark:text-white">
                   {matchDetails.date} {matchDetails.time && `at ${matchDetails.time}`}
-                </span>
-                {' vs '}
+                </span>{' '}
                 <span className="font-semibold text-gray-900 dark:text-white">
-                  {matchDetails.opponent}
+                  {matchLabel(matchDetails.opponent, matchDetails.squad || null)}
                 </span>
                 {' ('}
                 <span>{matchDetails.venue}</span>
@@ -992,6 +1028,8 @@ function App() {
               <PlayerInput
                 onPlayersChange={handlePlayersChange}
                 currentUser={session.username}
+                squad={matchDetails.squad || undefined}
+                clashes={squadClashes}
               />
             </div>
 
@@ -1139,8 +1177,10 @@ function App() {
                     )}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">Opponent:</span>{' '}
-                    <span className="text-gray-900 dark:text-white">{matchDetails.opponent}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Match:</span>{' '}
+                    <span className="text-gray-900 dark:text-white">
+                      {matchLabel(matchDetails.opponent, matchDetails.squad || null)}
+                    </span>
                   </div>
                   <div>
                     <span className="font-medium text-gray-700 dark:text-gray-300">Venue:</span>{' '}
@@ -1186,6 +1226,7 @@ function App() {
                     time: '',
                     opponent: '',
                     venue: 'Home',
+                    squad: '',
                   });
                 }}
                 className="rounded-md bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
